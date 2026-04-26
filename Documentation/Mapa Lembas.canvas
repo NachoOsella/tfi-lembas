@@ -1,0 +1,17 @@
+{
+	"nodes":[
+		{"id":"a1b2c3d4e5f60002","type":"file","file":"03 - Requisitos/03.1 - Requisitos funcionales.md","x":-820,"y":-40,"width":740,"height":340,"color":"4"},
+		{"id":"a1b2c3d4e5f60001","type":"file","file":"00 - Vision general.md","x":0,"y":-540,"width":900,"height":340,"color":"5"},
+		{"id":"a1b2c3d4e5f60004","type":"file","file":"05 - Casos de uso/05.2 - Casos de uso principales.md","x":1200,"y":550,"width":735,"height":340,"color":"6"},
+		{"id":"a1b2c3d4e5f60005","type":"file","file":"06 - Arquitectura/06.1 - Decision arquitectonica.md","x":110,"y":550,"width":750,"height":340,"color":"2"},
+		{"id":"a1b2c3d4e5f60006","type":"file","file":"10 - Planificacion/10.1 - MVP.md","x":1185,"y":1080,"width":750,"height":320,"color":"1"},
+		{"id":"a1b2c3d4e5f60003","type":"file","file":"04 - Dominio/04.1 - Reglas de negocio.md","x":360,"y":-40,"width":760,"height":340,"color":"3"}
+	],
+	"edges":[
+		{"id":"b1b2c3d4e5f60001","fromNode":"a1b2c3d4e5f60001","fromSide":"bottom","toNode":"a1b2c3d4e5f60002","toSide":"top","label":"define"},
+		{"id":"b1b2c3d4e5f60002","fromNode":"a1b2c3d4e5f60002","fromSide":"right","toNode":"a1b2c3d4e5f60003","toSide":"left","label":"se valida con"},
+		{"id":"b1b2c3d4e5f60003","fromNode":"a1b2c3d4e5f60003","fromSide":"right","toNode":"a1b2c3d4e5f60004","toSide":"left","label":"se ejecuta en"},
+		{"id":"b1b2c3d4e5f60004","fromNode":"a1b2c3d4e5f60004","fromSide":"left","toNode":"a1b2c3d4e5f60005","toSide":"right","label":"se implementa con"},
+		{"id":"b1b2c3d4e5f60005","fromNode":"a1b2c3d4e5f60005","fromSide":"right","toNode":"a1b2c3d4e5f60006","toSide":"left","label":"se planifica en"}
+	]
+}

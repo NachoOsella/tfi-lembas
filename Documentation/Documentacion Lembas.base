@@ -1,0 +1,18 @@
+filters:
+  and:
+    - file.ext == "md"
+    - file.path != "README.md"
+properties:
+  file.name:
+    displayName: Documento
+  file.folder:
+    displayName: Carpeta
+  file.mtime:
+    displayName: Modificado
+views:
+  - type: table
+    name: Documentos
+    order:
+      - file.name
+      - file.folder
+      - file.mtime
