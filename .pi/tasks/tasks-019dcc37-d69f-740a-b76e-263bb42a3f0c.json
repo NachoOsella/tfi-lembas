@@ -1,0 +1,65 @@
+{
+  "nextId": 6,
+  "tasks": [
+    {
+      "id": "1",
+      "subject": "Identificar cuenta y repositorios remotos",
+      "description": "Detectar qué proveedor/cuenta está configurado localmente (por ejemplo GitHub vía gh o SSH) y obtener un listado de repositorios accesibles sin exponer credenciales.",
+      "status": "completed",
+      "activeForm": "Identificando cuenta y repositorios",
+      "metadata": {},
+      "blocks": [],
+      "blockedBy": [],
+      "createdAt": 1777247755400,
+      "updatedAt": 1777247796484
+    },
+    {
+      "id": "2",
+      "subject": "Evaluar candidatos a borrado",
+      "description": "Analizar metadatos de repositorios (antigüedad, último push, tamaño, forks, estrellas, descripción, archivado, privacidad) para clasificar candidatos potenciales a borrar o archivar.",
+      "status": "completed",
+      "activeForm": "Evaluando candidatos",
+      "metadata": {},
+      "blocks": [],
+      "blockedBy": [],
+      "createdAt": 1777247757324,
+      "updatedAt": 1777247812905
+    },
+    {
+      "id": "3",
+      "subject": "Entregar reporte con criterios",
+      "description": "Presentar un reporte en español con criterios usados, repositorios candidatos, razones y recomendaciones de acción segura, sin borrar nada.",
+      "status": "completed",
+      "activeForm": "Preparando reporte",
+      "metadata": {},
+      "blocks": [],
+      "blockedBy": [],
+      "createdAt": 1777247759472,
+      "updatedAt": 1777247816545
+    },
+    {
+      "id": "4",
+      "subject": "Confirmar repositorios a borrar",
+      "description": "Confirmar la lista exacta de repositorios indicados por el usuario antes de ejecutar una operación destructiva e irreversible en GitHub.",
+      "status": "completed",
+      "activeForm": "Confirmando repositorios",
+      "metadata": {},
+      "blocks": [],
+      "blockedBy": [],
+      "createdAt": 1777247900548,
+      "updatedAt": 1777247934416
+    },
+    {
+      "id": "5",
+      "subject": "Borrar repositorios confirmados",
+      "description": "Ejecutar el borrado irreversible en GitHub de los repositorios confirmados por el usuario, incluyendo api_biblioteca3, y registrar cuáles se borraron o fallaron.",
+      "status": "completed",
+      "activeForm": "Borrando repositorios confirmados",
+      "metadata": {},
+      "blocks": [],
+      "blockedBy": [],
+      "createdAt": 1777247936452,
+      "updatedAt": 1777248304823
+    }
+  ]
+}
