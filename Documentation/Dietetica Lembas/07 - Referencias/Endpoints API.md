@@ -5,29 +5,26 @@ tags:
   - api
   - endpoints
   - rest
-  - arquitectura-detallada
 ---
 
-# Diseno de la API REST
+# Diseno de la API REST (MVP)
 
-> [!info] Arquitectura completa de la API REST: diseno de recursos, contratos de request/response, paginacion, versionado, ejemplos concretos.
+> [!info] Endpoints para tienda online con Mercado Pago Checkout Pro, caja operativa con arqueo de efectivo, y ventas presenciales.
 
 ---
 
-## Principios de diseno de la API
+## Principios
 
-1. **REST nominal**: recursos identificados por sustantivos en plural (`/products`, `/orders`). Acciones representadas por metodos HTTP (GET, POST, PUT, PATCH, DELETE).
-2. **Dos espacios de URLs**: `/api/public/` para endpoints accesibles sin autenticacion (catalogo, asistente, tracking). `/api/admin/` para endpoints protegidos del backoffice.
-3. **Formato unico de respuesta**: toda respuesta exitosa devuelve el recurso directamente. Toda respuesta de error sigue el formato `ApiError`.
-4. **Versionado por prefijo de ruta**: `/api/v1/` preparado para el futuro aunque inicialmente solo haya una version.
-5. **Paginacion consistente**: todos los listados usan el mismo esquema de paginacion (offset + limit o cursor).
-6. **HATEOAS minimo**: las respuestas incluyen links a recursos relacionados cuando es relevante (opcional en MVP).
+1. **REST nominal**: recursos en plural (`/products`, `/orders`).
+2. **Cuatro espacios de URLs**: `/api/store/` (publico), `/api/customer/` (rol CUSTOMER), `/api/admin/` (ADMIN/MANAGER/EMPLOYEE), `/api/webhooks/` (externo).
+3. **Formato unico**: respuestas exitosas directas, errores con `ApiError`.
+4. **Paginacion**: offset + limit (`page`, `size`).
 
 ---
 
 ## Formato de respuestas
 
-### Respuesta exitosa
+### Exito
 
 ```json
 // GET /api/admin/products/123
@@ -36,136 +33,130 @@ tags:
   "name": "Granola 500g",
   "barcode": "7791234567890",
   "category": { "id": 5, "name": "Cereales" },
-  "brand": { "id": 3, "name": "NaturalLife" },
-  "tags": ["sin-tacc", "vegano", "sin-azucar"],
-  "price": 4900.00,
+  "brandName": "NaturalLife",
+  "salePrice": 4900.00,
   "onlineStatus": "PUBLISHED",
-  "images": [
-    { "id": 1, "url": "/uploads/products/123/1.jpg", "main": true }
-  ],
-  "stock": [
-    { "branchId": 1, "branchName": "Centro", "available": 10 },
-    { "branchId": 2, "branchName": "Nueva Cordoba", "available": 3 }
-  ],
-  "createdAt": "2026-05-01T10:00:00Z",
-  "updatedAt": "2026-05-12T15:30:00Z"
+  "imageUrl": "/uploads/products/123.jpg",
+  "createdAt": "2026-05-01T10:00:00Z"
 }
 ```
 
-### Respuesta paginada
-
-```json
-// GET /api/admin/products?page=1&size=20
-{
-  "data": [ ...array de productos... ],
-  "pagination": {
-    "page": 1,
-    "size": 20,
-    "total": 156,
-    "totalPages": 8,
-    "hasNext": true,
-    "hasPrev": false
-  }
-}
-```
-
-**Por que paginacion offset y no cursor**: es la mas simple de implementar y entender. Para una dietetica con cientos de productos (no millones), el rendimiento es aceptable. Si en el futuro el catalogo creciera a decenas de miles, se migraria a cursor-based pagination.
-
-### Respuesta de error
+### Error
 
 ```json
 {
   "status": 409,
   "code": "INSUFFICIENT_STOCK",
   "message": "Stock insuficiente para el producto Granola 500g",
-  "details": {
-    "productId": 123,
-    "available": 2,
-    "requested": 5,
-    "branchId": 1
-  },
+  "details": { "productId": 123, "available": 2, "requested": 5, "branchId": 1 },
   "timestamp": "2026-05-12T15:30:00Z",
-  "path": "/api/admin/orders",
-  "traceId": "abc-123-def"
+  "path": "/api/customer/orders"
 }
 ```
 
-**Los campos `details` varian segun el error**:
-- `VALIDATION_ERROR`: `{ field: "price", rejectedValue: -100, message: "must be greater than 0" }`
-- `PRODUCT_NOT_FOUND`: `{ productId: 999 }`
-- `ORDER_INVALID_STATE`: `{ orderId: 42, currentState: "ENTREGADO", requestedAction: "cancel" }`
-- `INSUFFICIENT_STOCK`: `{ productId: 123, available: 2, requested: 5 }`
-
 ---
 
-## Contratos de recursos principales
+## Contratos
 
-### Auth
+### Auth (publico)
 
 ```
+POST /api/auth/register
+  Request:  { firstName, lastName, email, password, phone? }
+  Response: { token, refreshToken, user }
+  Errors:   EMAIL_DUPLICATED (409), VALIDATION_ERROR (400)
+  Notas:    Crea usuario con rol CUSTOMER.
+
 POST /api/auth/login
-  Request:  { email: string, password: string }
-  Response: { token: string, refreshToken: string, user: UserDto }
+  Request:  { email, password }
+  Response: { token, refreshToken, user }
   Errors:   INVALID_CREDENTIALS (401), ACCOUNT_DISABLED (403)
-
-POST /api/auth/refresh
-  Request:  { refreshToken: string }
-  Response: { token: string, refreshToken: string }
-  Errors:   TOKEN_EXPIRED (401), TOKEN_INVALID (401)
-
-POST /api/auth/logout
-  Headers:  Authorization: Bearer <token>
-  Response: 204 No Content
 
 GET /api/auth/me
   Headers:  Authorization: Bearer <token>
-  Response: { id, email, name, role, branchId, branchName }
-  Errors:   UNAUTHORIZED (401)
+  Response: { id, email, firstName, lastName, role, branchId, branchName }
 ```
 
-### Catalogo publico
+### Catalogo publico (store)
 
 ```
-GET /api/public/catalog/products?q=&categoryId=&tag=&branchId=&page=&size=
+GET /api/store/products?q=&categoryId=&branchId=&page=&size=
   Response: PaginatedResponse<ProductSummaryDto>
-  Notas:    Solo productos con onlineStatus=PUBLISHED. branchId filtra por stock disponible.
-            Si no se especifica branchId, no se muestra stock (solo "disponible" generico).
+  Notas:    Solo onlineStatus=PUBLISHED.
 
-GET /api/public/catalog/products/{id}?branchId=
+GET /api/store/products/{id}?branchId=
   Response: ProductDetailDto
   Errors:   PRODUCT_NOT_FOUND (404)
-  Notas:    Incluye stock disponible en la sucursal solicitada.
 
-GET /api/public/catalog/categories
+GET /api/store/categories
   Response: [ { id, name, productCount } ]
-
-GET /api/public/catalog/products/{id}/recommendations?branchId=
-  Response: [ ProductSummaryDto ]
-  Notas:    Productos similares (misma categoria/etiquetas) con stock en la sucursal.
 ```
 
-### Pedidos (publico)
+### Perfil de cliente (customer)
 
 ```
-POST /api/public/orders
+GET /api/customer/profile
+  Headers:  Authorization: Bearer <token>
+  Response: { id, firstName, lastName, email, phone, createdAt }
+
+PATCH /api/customer/profile
+  Headers:  Authorization: Bearer <token>
+  Request:  { firstName?, lastName?, phone? }
+  Response: { id, firstName, lastName, email, phone }
+```
+
+### Pedidos online con Mercado Pago (customer)
+
+El carrito es local (localStorage). Al confirmar, se crea la orden y la preferencia de MP.
+
+```
+POST /api/customer/orders
+  Headers:  Authorization: Bearer <token>
   Request:  {
               items: [ { productId: 123, quantity: 2 } ],
-              branchId: 1,
-              customerName: string,
-              customerEmail?: string,
-              customerPhone: string,
-              deliveryType: "PICKUP" | "SHIPPING",
-              deliveryData?: { address, city, phone, notes }
+              paymentMethod: "MERCADO_PAGO"
             }
-  Response: OrderCreatedDto { orderId, orderNumber, paymentLink, estimatedTotal }
-  Errors:   INSUFFICIENT_STOCK (409), PRODUCT_NOT_FOUND (404), BRANCH_INVALID (400)
-  Notas:    Checkout invitado: no se requiere autenticacion ni registro.
-            No se reserva stock aqui. Solo se valida disponibilidad.
-            El stock se reserva al confirmar el pago.
+  Response: OrderCreatedDto { id, orderNumber, status: "PENDING_PAYMENT", total }
+  Errors:   INSUFFICIENT_STOCK (409), PRODUCT_NOT_FOUND (404), UNAUTHORIZED (401)
+  Notas:    Valida stock, crea order (type=ONLINE, status=PENDING_PAYMENT),
+            crea payment (provider=MERCADO_PAGO, method=CHECKOUT_PRO, status=PENDING),
+            NO descuenta stock aun.
 
-GET /api/public/orders/{orderNumber}/tracking
-  Response: OrderTrackingDto { orderNumber, status, estimatedDate, timeline }
-  Notas:    Sin autenticacion. Cualquiera con el numero de pedido puede tracking.
+GET /api/customer/orders
+  Headers:  Authorization: Bearer <token>
+  Response: [ OrderSummaryDto ]
+  Notas:    Solo ordenes del CUSTOMER autenticado. Incluye estado del payment.
+
+GET /api/customer/orders/{id}
+  Headers:  Authorization: Bearer <token>
+  Response: OrderDetailDto (con payments incluidos)
+  Errors:   ORDER_NOT_FOUND (404), FORBIDDEN (403)
+```
+
+### Checkout Mercado Pago (customer)
+
+```
+POST /api/customer/orders/{orderId}/checkout/mp
+  Headers:  Authorization: Bearer <token>
+  Response: { initPoint: string, preferenceId: string }
+  Errors:   ORDER_NOT_FOUND (404), ORDER_INVALID_STATE (409)
+  Notas:    Crea preferencia en MP, guarda provider_preference_id en payment,
+            devuelve init_point para redirigir al checkout de MP.
+            Este endpoint es idempotente: si ya hay preferencia, la devuelve.
+```
+
+### Webhook Mercado Pago (publico, firmado)
+
+```
+POST /api/webhooks/mercadopago
+  Headers:  X-Signature: <firma MP>
+  Response: 200 OK
+  Notas:    Recibe notificacion de MP. Verifica firma.
+            Consulta estado real del pago en MP.
+            Si APPROVED: actualiza payment, descuenta stock FEFO,
+            cambia order a PAID, registra stock_movements.
+            Si REJECTED: actualiza payment, order a PAYMENT_FAILED.
+            Procesamiento con idempotencia (por provider_payment_id).
 ```
 
 ### Productos (admin)
@@ -173,288 +164,231 @@ GET /api/public/orders/{orderNumber}/tracking
 ```
 GET /api/admin/products?q=&categoryId=&onlineStatus=&page=&size=
   Response: PaginatedResponse<ProductSummaryDto>
-  Notas:    Incluye productos en todos los estados (borrador, publicado, pausado).
 
 POST /api/admin/products
-  Request:  {
-              name, barcode?, categoryId, brandId?, tags?: [],
-              price: number, onlineStatus?: string,
-              stockInitial?: [ { branchId: 1, quantity: 10 } ]
-            }
-  Response: ProductDetailDto (201 Created)
-  Errors:   VALIDATION_ERROR (400), BARCODE_DUPLICATED (409)
-
-GET /api/admin/products/{id}
-  Response: ProductDetailDto
-  Errors:   PRODUCT_NOT_FOUND (404)
+  Request:  { name, barcode?, categoryId, brandName?, salePrice, onlineStatus?, imageUrl? }
+  Response: ProductDetailDto (201)
 
 PUT /api/admin/products/{id}
-  Request:  Mismos campos que POST (todos opcionales en PUT parcial via PATCH)
+  Request:  { name?, barcode?, categoryId?, brandName?, salePrice?, onlineStatus?, imageUrl? }
   Response: ProductDetailDto
-  Errors:   PRODUCT_NOT_FOUND (404), VALIDATION_ERROR (400)
 
-PATCH /api/admin/products/{id}/publish
+PATCH /api/admin/products/{id}/status
+  Request:  { onlineStatus: "PUBLISHED" | "PAUSED" | "DRAFT" }
   Response: ProductDetailDto
-  Errors:   PRODUCT_NOT_FOUND (404), INVALID_STATE (409, si ya esta publicado)
-
-PATCH /api/admin/products/{id}/pause
-  Response: ProductDetailDto
-  Errors:   PRODUCT_NOT_FOUND (404), INVALID_STATE (409, si no estaba publicado)
 
 DELETE /api/admin/products/{id}
-  Response: 204 No Content
-  Errors:   PRODUCT_NOT_FOUND (404), PRODUCT_HAS_ORDERS (409)
+  Response: 204
 ```
 
 ### Stock (admin)
 
 ```
-GET /api/admin/stock?productId=&branchId=&lowStock=&expiringSoon=
-  Response: [ BranchStockDto ]
+GET /api/admin/stock/lots?productId=&branchId=&expiringSoon=
+  Response: [ StockLotDto ]
 
-POST /api/admin/stock/entries
-  Request:  { productId, branchId, quantity, lotExpiration?: date, supplierId?, cost?: number }
-  Response: StockMovementDto
-  Notas:    Crea ingreso de stock. Si tiene vencimiento, crea lote.
+POST /api/admin/stock/lots
+  Request:  { productId, branchId, quantity, lotCode?, expirationDate?, costPrice? }
+  Response: StockLotDto (201)
 
 POST /api/admin/stock/adjustments
-  Request:  { productId, branchId, quantity (positivo=sube, negativo=baja), reason }
+  Request:  { productId, branchId, quantity, reason, stockLotId? }
   Response: StockMovementDto
-  Errors:   INSUFFICIENT_STOCK (409, si quantity > disponible)
-
-POST /api/admin/stock/internal-consumptions
-  Request:  { productId, branchId, quantity, reason, employeeId }
-  Response: StockMovementDto
-
-POST /api/admin/stock/waste
-  Request:  { productId, branchId, quantity, reason, lotId? }
-  Response: StockMovementDto
+  Errors:   INSUFFICIENT_STOCK (409)
 
 GET /api/admin/stock/movements?productId=&branchId=&type=&from=&to=&page=&size=
   Response: PaginatedResponse<StockMovementDto>
-
-GET /api/admin/stock/low-stock?branchId=&threshold=
-  Response: [ LowStockAlertDto { product, branch, current, minimum, suggestedOrder } ]
-
-GET /api/admin/stock/expiring-soon?branchId=&days=
-  Response: [ ExpiringLotAlertDto { lot, product, branch, expirationDate, quantity } ]
 ```
 
-### Ventas presenciales (admin)
+### Caja (admin)
 
 ```
-POST /api/admin/sales
+POST /api/admin/cash-sessions/open
+  Request:  { openingCashAmount: number, openingNotes?: string }
+  Response: CashSessionDto (201)
+  Errors:   CASH_SESSION_ALREADY_OPEN (409)
+  Notas:    Abre caja para la sucursal del usuario autenticado.
+            Solo una caja abierta por sucursal.
+
+GET /api/admin/cash-sessions/current
+  Response: CashSessionDto | null
+  Notas:    Devuelve la caja abierta actual de la sucursal del usuario.
+
+POST /api/admin/cash-sessions/{id}/movements
+  Request:  { type: "CASH_IN" | "CASH_OUT" | "ADJUSTMENT", method: "CASH" | "TRANSFER" | "OTHER", amount, reason }
+  Response: CashMovementDto (201)
+  Errors:   CASH_SESSION_NOT_OPEN (409)
+  Notas:    Solo permite movimientos si la caja esta OPEN.
+
+POST /api/admin/cash-sessions/{id}/close
+  Request:  { countedCashAmount: number, closingNotes?: string, cashDifferenceReason?: string }
+  Response: CashSessionDto
+  Errors:   CASH_SESSION_NOT_OPEN (409), DIFFERENCE_REASON_REQUIRED (422)
+  Notas:    Calcula expectedCashAmount. Si countedCashAmount != expectedCashAmount,
+            exige cashDifferenceReason. No bloquea el cierre, pero obliga explicacion.
+            Actualiza status a CLOSED.
+
+GET /api/admin/cash-sessions
+  Response: [ CashSessionSummaryDto ]
+  Notas:    Historial de cierres de caja.
+
+GET /api/admin/cash-sessions/{id}
+  Response: CashSessionDetailDto
+  Notas:    Incluye: apertura, cierre, ventas asociadas, payments,
+            totales por metodo de pago, efectivo esperado vs contado, diferencia.
+```
+
+### Ventas presenciales (admin) -- POS
+
+Requiere caja abierta en la sucursal. Crea orden POS con payment asociado a la caja.
+
+```
+POST /api/admin/pos/sales
   Request:  {
-              items: [ { productId: 123, quantity: 2, unitPrice: 4900 } ],
-              branchId: 1,
-              paymentMethod: "CASH" | "TRANSFER" | "QR",
-              employeeId: 42
+              items: [ { productId: 123, quantity: 2 } ],
+              paymentMethod: "CASH" | "QR" | "TRANSFER" | "DEBIT_CARD" | "CREDIT_CARD",
+              customerUserId?: number,
+              customerNameSnapshot?: string
             }
-  Response: SaleCompletedDto (201 Created)
-  Errors:   INSUFFICIENT_STOCK (409), PRODUCT_NOT_FOUND (404),
-            BRANCH_MISMATCH (400, si empleado no pertenece a la sucursal)
-  Notas:    Operacion transaccional. Valida stock, descuenta, registra venta.
-            branchId se obtiene del empleado autenticado (no del request).
-
-GET /api/admin/sales?from=&to=&branchId=&employeeId=&page=&size=
-  Response: PaginatedResponse<SaleSummaryDto>
-
-GET /api/admin/sales/{id}
-  Response: SaleDetailDto
+  Response: OrderDetailDto (201)
+  Errors:   INSUFFICIENT_STOCK (409), CASH_SESSION_REQUIRED (400),
+            PRODUCT_NOT_FOUND (404)
+  Notas:    Operacion transaccional:
+            1. Valida caja abierta en la sucursal del empleado
+            2. Valida stock (FOR UPDATE)
+            3. Descuenta stock FEFO
+            4. INSERT stock_movement (POS_SALE)
+            5. INSERT order (type=POS, status=PAID)
+            6. INSERT order_items (con snapshots)
+            7. INSERT payment (cash_session_id, provider=MANUAL, method=segun request, status=APPROVED)
 ```
 
-### Pedidos (admin)
+### Ordenes (admin)
 
 ```
-GET /api/admin/orders?status=&branchId=&from=&to=&page=&size=
+GET /api/admin/orders?status=&branchId=&type=&from=&to=&page=&size=
   Response: PaginatedResponse<OrderSummaryDto>
 
 GET /api/admin/orders/{id}
-  Response: OrderDetailDto
+  Response: OrderDetailDto (con payments)
 
-PATCH /api/admin/orders/{id}/mark-paid
-  Request:  { paymentId, externalReference? }
-  Response: OrderDetailDto
-  Errors:   ORDER_INVALID_STATE (409, si no esta PENDIENTE_PAGO)
-  Notas:    Revalida stock y precio antes de marcar como pagado.
+PATCH /api/admin/orders/{id}/mark-paid  → obsoleto. Usar webhook MP para ONLINE.
+  Notas:   Solo aplica para ordenes POS (ya se crean pagadas).
+           Para ONLINE, el pago se confirma via webhook de MP.
 
 PATCH /api/admin/orders/{id}/prepare
   Response: OrderDetailDto
   Errors:   ORDER_INVALID_STATE (409)
 
-PATCH /api/admin/orders/{id}/ready-for-pickup
-  Response: OrderDetailDto
-  Errors:   ORDER_INVALID_STATE (409)
-
-PATCH /api/admin/orders/{id}/out-for-delivery
+PATCH /api/admin/orders/{id}/ready
   Response: OrderDetailDto
   Errors:   ORDER_INVALID_STATE (409)
 
 PATCH /api/admin/orders/{id}/delivered
   Response: OrderDetailDto
   Errors:   ORDER_INVALID_STATE (409)
-  Notas:    Confirma reserva, descuenta stock definitivamente (FEFO), registra movimiento.
+  Notas:    Solo cambia estado. NO descuenta stock.
 
 PATCH /api/admin/orders/{id}/cancel
-  Request:  { reason }
+  Request:  { reason: string }
   Response: OrderDetailDto
-  Errors:   ORDER_INVALID_STATE (409, si ya esta ENTREGADO o CANCELADO)
-  Notas:    Libera reserva de stock si existe.
+  Errors:   ORDER_INVALID_STATE (409)
+  Notas:    Revierte stock si la orden estaba pagada.
 ```
 
 ### Proveedores (admin)
 
 ```
-GET  /api/admin/suppliers?q=&page=&size=
+GET /api/admin/suppliers?q=&page=&size=
   Response: PaginatedResponse<SupplierDto>
 
 POST /api/admin/suppliers
   Request:  { name, contactName?, phone?, email?, cuit? }
-  Response: SupplierDto (201 Created)
+  Response: SupplierDto (201)
 
 PUT /api/admin/suppliers/{id}
-  Request:  { ... campos editables ... }
+  Request:  { name?, contactName?, phone?, email?, cuit? }
   Response: SupplierDto
 
-PATCH /api/admin/products/{id}/supplier-cost
-  Request:  { supplierId, cost }
-  Response: ProductDetailDto
-  Notas:    Ingreso manual de costo por producto-proveedor. El sistema sugiere
-            precio de venta basado en el margen configurado y registra en historial.
-            No hay flujo de aprobacion en MVP; el administrador aplica directamente.
-  Errors:   VALIDATION_ERROR (400, si el costo es invalido)
+GET /api/admin/supplier-products?productId=&supplierId=
+  Response: [ SupplierProductDto ]
+
+POST /api/admin/supplier-products
+  Request:  { productId, supplierId, cost, supplierSku? }
+  Response: SupplierProductDto (201)
+
+PUT /api/admin/supplier-products/{id}
+  Request:  { cost, supplierSku? }
+  Response: SupplierProductDto
 ```
 
-### Imagenes de producto (admin)
+### Reportes (admin)
 
 ```
-POST /api/admin/products/{id}/images
-  Request:  multipart/form-data (file: imagen, main?: boolean)
-  Response: ImageDto (201 Created)
-  Errors:   IMAGE_TOO_LARGE (400), INVALID_IMAGE_FORMAT (400)
-
-GET /api/admin/products/{id}/images
-  Response: [ ImageDto ]
-
-DELETE /api/admin/products/{id}/images/{imageId}
-  Response: 204 No Content
-
-PATCH /api/admin/products/{id}/images/{imageId}/main
-  Response: ImageDto
-```
-
-### Analytics (admin)
-
-```
-GET /api/admin/analytics/dashboard?branchId=
-  Response: DashboardDto {
-              salesToday, salesTodayChange,
-              pendingOrders, pendingOrdersChange,
-              lowStockItems, expiringSoonItems,
-              topProducts: [ { product, quantity, revenue } ],
-              recentOrders: [ OrderSummaryDto ]
-            }
-
-GET /api/admin/analytics/sales?from=&to=&branchId=&groupBy=day|week|month
-  Response: [ { period, total, count, averageTicket } ]
-
-GET /api/admin/analytics/products?from=&to=&branchId=&sortBy=quantity|revenue|margin
-  Response: [ ProductAnalyticsDto ]
-
-GET /api/admin/analytics/inventory?branchId=
-  Response: { lowStock: [], expiringSoon: [], totalProducts, totalValue }
-
-GET /api/admin/analytics/orders?from=&to=&branchId=
-  Response: { byStatus: { PAGADO: 5, EN_PREPARACION: 3, ... }, avgPreparationTime }
-```
-
-### Asistente IA
-
-```
-POST /api/public/assistant/recommendations
-  Request:  { query: "algo dulce sin azucar", branchId: 1, limit?: 5 }
+GET /api/admin/reports/dashboard
   Response: {
-              recommendations: [ ProductSummaryDto ],
-              alternatives: [ ProductSummaryDto ] | null,
-              message: "Encontre estas opciones..." | "No tengo stock de eso, pero..."
+              todaySales: number,
+              onlineSales: number,
+              posSales: number,
+              pendingOrders: number,
+              lowStockProducts: number,
+              expiringLots: number,
+              topProducts: [ { productId, name, quantity } ]
             }
-  Errors:   INVALID_QUERY_FORMAT (400), NO_RECOMMENDATIONS_FOUND (404)
-  Notas:    No usa LLM. Filtra por tags + stock. Si no hay resultados,
-            busca alternativas en la misma categoria.
 
-POST /api/admin/assistant/restock-suggestions?branchId=&limit=
-  Response: [ { product, currentStock, minimumStock, salesVelocity, suggestedQuantity } ]
+GET /api/admin/reports/cash-session/{id}
+  Response: {
+              session: CashSessionDto,
+              totalsByMethod: {
+                CASH: number,
+                QR: number,
+                TRANSFER: number,
+                DEBIT_CARD: number,
+                CREDIT_CARD: number
+              },
+              expectedCash: number,
+              countedCash: number,
+              difference: number,
+              differenceReason: string
+            }
 
-POST /api/admin/assistant/promotion-suggestions?branchId=&productId=
-  Response: { product, currentPrice, suggestedDiscount, suggestedPrice, reason, urgency }
+GET /api/admin/recommendations
+  Response: [
+              { type: "LOW_STOCK" | "EXPIRING_SOON" | "HIGH_ROTATION" | "NO_MOVEMENT",
+                productId, productName, message, urgency }
+            ]
 ```
 
-### Etiquetas (admin)
+### Sucursales (admin)
 
 ```
-POST /api/admin/labels/price-tags
-  Request:  { productIds: [123, 124, 125], branchId?: number, includeDate?: boolean }
-  Response: LabelJobDto { jobId, url: "/uploads/labels/{jobId}.pdf" }
+GET /api/admin/branches
+  Response: [ BranchDto ]
+
+POST /api/admin/branches
+  Request:  { name, address?, phone? }
+  Response: BranchDto (201)
+
+PUT /api/admin/branches/{id}
+  Request:  { name?, address?, phone? }
+  Response: BranchDto
 ```
 
 ---
 
-## Versionado de la API
+## Rate limiting
 
-**Estrategia**: prefijo de ruta (`/api/v1/`).
-
-```text
-/api/v1/public/catalog/products
-/api/v1/admin/orders
-```
-
-**Por que prefijo de ruta y no header**: es visible, facil de depurar, y no requiere negociacion de contenido. El header `Accept-Version` es mas "puro" REST pero menos practico.
-
-**Cuando versionar**: cuando un cambio en la respuesta rompe clientes existentes. Agregar campos nuevos a una respuesta no requiere nueva version. Cambiar el tipo de un campo existente o eliminar un campo si requiere nueva version.
-
-Para el MVP, no se implementa versionado activo. La ruta base es `/api/` y se agregara `/api/v1/` cuando haya necesidad de mantener compatibilidad hacia atras.
-
----
-
-## Rate limiting y seguridad de API
-
-Para el MVP, el rate limiting se implementa a nivel de `application.yml` con configuracion simple:
-
-```yaml
-# Por defecto, Spring Boot no incluye rate limiting.
-# Se puede implementar con un filtro simple o bucket4j.
-```
-
-**Endpoints publicos con restriccion**:
-
-| Endpoint | Limite sugerido | Justificacion |
+| Endpoint | Limite | Motivo |
 |---|---|---|
-| `POST /api/auth/login` | 5 intentos por minuto por IP | Prevenir fuerza bruta |
-| `POST /api/public/assistant/recommendations` | 30 por minuto por IP | Evitar abuso del asistente |
-| `GET /api/public/catalog/products` | 60 por minuto por IP | Carga normal de catalogo |
-
----
-
-## Estrategia de documentacion de API
-
-Para el MVP, se usa **SpringDoc OpenAPI** (swagger) que genera documentacion interactiva automaticamente desde las anotaciones del codigo.
-
-```yaml
-# Dependencia: springdoc-openapi-starter-webmvc-ui
-# URL: /swagger-ui.html
-```
-
-La documentacion incluye:
-- Todos los endpoints con parametros
-- Schemas de request/response
-- Codigos de error por endpoint
-- Posibilidad de probar endpoints desde el navegador
-- Autenticacion JWT configurable en Swagger UI
+| `POST /api/auth/login` | 5/min por IP | Fuerza bruta |
+| `POST /api/auth/register` | 5/min por IP | Creacion masiva |
+| `GET /api/store/products` | 60/min por IP | Catalogo |
+| `/api/webhooks/mercadopago` | Sin limite (verificar firma) | MP |
 
 ---
 
 > [!seealso] Notas relacionadas
-> - [[Backend]] -- implementacion de controladores y casos de uso
-> - [[Testing]] -- tests de API con MockMvc
-> - [[Despliegue]] -- configuracion de CORS y Nginx
+> - [[Backend]]
+> - [[Base de Datos]]
+> - [[Testing]]
 > - Volver a [[_Index]]

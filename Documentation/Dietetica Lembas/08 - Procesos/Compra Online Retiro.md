@@ -3,13 +3,15 @@ title: "Compra Online con Retiro"
 tags:
   - procesos
   - compra-online
+  - mercadopago
   - retiro
-  - stock
 ---
 
-# Proceso: Compra Online con Retiro en Sucursal
+# Proceso: Compra Online con Mercado Pago Checkout Pro
 
-> [!info] Flujo desde que el cliente entra a la tienda hasta que retira el pedido.
+> [!info] Cliente registrado, carrito local, pago con MP, retiro en sucursal.
+
+---
 
 ## Diagrama de secuencia
 
@@ -19,103 +21,85 @@ sequenceDiagram
     actor C as Cliente
     participant FE as Frontend
     participant BE as Backend
+    participant MP as MercadoPago
     participant DB as PostgreSQL
 
-    Note over C,DB: 1. SELECCIONAR SUCURSAL
-    C->>FE: Elige sucursal Centro
-    FE->>BE: GET /api/public/catalog/branches/{id}
-    BE->>DB: Validar branch activa
-    DB-->>BE: OK
-    BE-->>FE: branch data
-    FE->>FE: Guarda branchId en estado
+    Note over C,DB: 0. REGISTRO Y LOGIN
+    C->>FE: Se registra / Inicia sesion
+    FE->>BE: POST /api/auth/register o /api/auth/login
+    BE-->>FE: Token JWT (rol CUSTOMER)
 
-    Note over C,DB: 2. NAVEGAR CATALOGO
-    C->>FE: Busca "granola"
-    FE->>BE: GET /api/public/catalog/products?q=granola&branchId=1
-    BE->>DB: Filtrar productos activos + stock
-    DB-->>BE: Productos con stock y precio
-    BE->>BE: Calcular stock_disponible
-    BE-->>FE: Productos con stock disponible
-    FE-->>C: Muestra resultados
+    Note over C,DB: 1. CATALOGO Y CARRITO LOCAL
+    C->>FE: Navega catalogo y agrega productos
+    FE->>BE: GET /api/store/products
+    BE->>DB: Consulta productos + stock
+    DB-->>BE: Productos disponibles
+    BE-->>FE: Catalogo
+    FE->>FE: CartService (localStorage)
 
-    Note over C,DB: 3. AGREGAR AL CARRITO
-    C->>FE: Agrega 3 unidades
-    FE->>BE: POST /api/public/orders (validacion previa al confirmar)
-    BE->>DB: Validar stock disponible
-    DB-->>BE: Stock OK
-    BE-->>FE: Item valido
-    FE->>FE: CartService.addItem()
+    Note over C,DB: 2. CREAR ORDEN
+    C->>FE: Confirma compra
+    FE->>BE: POST /api/customer/orders (con token)
+    BE->>DB: Validar stock, INSERT order (type=ONLINE, status=PENDING_PAYMENT)
+    BE->>DB: INSERT order_items (snapshots)
+    BE->>DB: INSERT payment (provider=MERCADO_PAGO, method=CHECKOUT_PRO, status=PENDING)
+    BE-->>FE: { orderId, orderNumber, total }
 
-    Note over C,DB: 4. CHECKOUT
-    C->>FE: Confirma pedido, elige retiro
-    FE->>BE: POST /api/public/orders
+    Note over C,DB: 3. CHECKOUT MP
+    C->>FE: Procede al pago
+    FE->>BE: POST /api/customer/orders/{orderId}/checkout/mp
+    BE->>MP: Crear preferencia de pago
+    MP-->>BE: { initPoint, preferenceId }
+    BE->>DB: UPDATE payment SET provider_preference_id, external_reference
+    BE-->>FE: { initPoint }
+    FE->>FE: Redirige a window.location.href = initPoint
+
+    Note over C,DB: 4. PAGO EN MP
+    C->>MP: Completa el pago en MP Checkout Pro
+    MP->>FE: Redirige a splash de resultado
+    FE->>BE: GET /api/customer/orders/{orderId} (consulta estado)
+
+    Note over C,DB: 5. WEBHOOK MP
+    MP->>BE: POST /api/webhooks/mercadopago
+    BE->>BE: Verificar firma
+    BE->>MP: Consultar estado real del pago
+    MP-->>BE: Pago APPROVED
     BE->>BE: @Transactional
-    BE->>DB: Re-validar stock (FOR UPDATE)
-    DB-->>BE: Stock sigue OK
-    BE->>DB: INSERT online_order
-    BE->>DB: INSERT order_items
-    BE->>BE: PaymentAdapter.generateLink()
-    BE->>DB: INSERT payment (PENDIENTE)
-    BE-->>FE: Pedido creado + link de pago
-    FE-->>C: Link para pagar
+    BE->>DB: UPDATE payment (status=APPROVED, approved_at)
+    BE->>DB: Revalidar stock (FOR UPDATE)
+    BE->>DB: UPDATE stock_lots (descontar FEFO)
+    BE->>DB: INSERT stock_movement (type=ONLINE_SALE)
+    BE->>DB: UPDATE order (status=PAID)
+    BE-->>MP: 200 OK
 
-    Note over C,DB: 5. PAGO Y RESERVA
-    C->>BE: Paga mediante link
-    BE->>DB: Revalidar precio y stock disponible
-    BE->>DB: UPDATE payment -> APROBADO
-    BE->>DB: UPDATE order -> PAGADO
-    BE->>DB: INSERT stock_reservation (ACTIVA)
-    BE->>DB: UPDATE branch_stock (reservado +=)
-    BE-->>FE: Pago confirmado
-
-    Note over C,DB: 6. PREPARACION
+    Note over C,DB: 6. PREPARACION Y RETIRO
     actor E as Empleado
-    E->>FE: Login, ve pedidos PAGADO
-    E->>FE: Marca EN_PREPARACION
-    FE->>BE: PATCH /orders/{id}/prepare
-    BE->>DB: UPDATE estado_pedido
-    E->>FE: Marca LISTO_PARA_RETIRAR
-    FE->>BE: PATCH /api/admin/orders/{id}/ready-for-pickup
-    BE->>DB: UPDATE estado_pedido
-
-    Note over C,DB: 7. RETIRO Y DESCUENTO
-    C-->>E: Cliente llega a retirar
-    E->>FE: Marca ENTREGADO
-    FE->>BE: PATCH /api/admin/orders/{id}/delivered
-    BE->>BE: @Transactional
-    BE->>DB: UPDATE stock_lots (FEFO)
-    BE->>DB: UPDATE branch_stock (fisico -=, reservado -=)
-    BE->>DB: UPDATE reservation -> CONFIRMADA
-    BE->>DB: INSERT stock_movement
-    BE-->>FE: OK
-    FE-->>E: Pedido entregado
+    E->>FE: Ve ordenes PAID
+    E->>FE: Marca PREPARING → PATCH /api/admin/orders/{id}/prepare
+    E->>FE: Marca READY → PATCH /api/admin/orders/{id}/ready
+    C-->>E: Cliente retira
+    E->>FE: Marca DELIVERED → PATCH /api/admin/orders/{id}/delivered
 ```
-
----
 
 ## Reglas de negocio
 
 | Regla | Paso |
 |---|---|
-| Cliente debe elegir sucursal antes de agregar al carrito | 1 |
-| Stock disponible = stock_fisico - stock_reservado | 2 |
-| Se re-valida con lock al crear pedido | 4 |
-| Reserva se crea al pagar, no al crear pedido | 5 |
-| Descuento definitivo se hace al entregar | 7 |
-| Descuento sigue FEFO | 7 |
-
----
-
-## Estados de pedido
-
-```
-PENDIENTE_PAGO -> PAGADO -> EN_PREPARACION -> LISTO_PARA_RETIRAR -> ENTREGADO
-```
+| Cliente debe estar registrado (rol CUSTOMER) | 0 |
+| Carrito es local (localStorage) | 1 |
+| Orden se crea PENDING_PAYMENT, sin descontar stock | 2 |
+| Payment se crea junto con la orden (PENDING) | 2 |
+| Checkout MP crea preferencia (endpoint separado) | 3 |
+| Webhook verifica firma y estado real en MP | 5 |
+| Si pago APPROVED: actualiza payment, descuenta FEFO, order a PAID | 5 |
+| Si pago REJECTED: actualiza payment, order a PAYMENT_FAILED | 5 |
+| Si pago aprobado pero sin stock: order a STOCK_CONFLICT | 5 |
+| DELIVERED solo cambia estado, no descuenta stock | 6 |
 
 ---
 
 > [!seealso] Notas relacionadas
 > - [[02 - Modulos/Tienda Online]]
 > - [[03 - Dominio/Reglas de Stock]]
-> - [[Ciclo Reserva Stock]]
+> - [[Cancelacion Pedido]]
 > - Volver a [[08 - Procesos/_Index]]

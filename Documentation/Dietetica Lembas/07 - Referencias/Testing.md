@@ -6,78 +6,50 @@ tags:
   - calidad
 ---
 
-# Estrategia de Testing
-
-> [!info] Estrategia de pruebas para backend, frontend y flujos end-to-end.
+# Estrategia de Testing (MVP)
 
 ---
 
 ## Backend
 
-### Unit tests
+### Unit tests (sin Spring, sin BD)
 
-Probar reglas de negocio de forma aislada:
+- FEFO: seleccion de lote, descuento parcial, descuento multiple
+- Calculo de cierre: expectedCashAmount, diferencia
+- Cambios de estado de orden
+- Validacion de stock
 
-- Reglas de stock (disponible, reservado, liberacion)
-- Calculo de precios sugeridos
-- Cambios de estado de pedidos
-- Validacion de stock contra pedidos
-- Recomendaciones basicas del asistente
+### Integration tests (con Testcontainers PostgreSQL)
 
-### Integration tests
-
-Probar flujos completos con base de datos real:
-
-- Crear pedido sin reservar stock
-- Aprobar pago, revalidar stock y crear reserva
-- Venta presencial y descuento de stock
-- Ingreso manual de costo por producto-proveedor
-- Actualizacion de precio sugerido al cambiar costo
-
-### Tests con base real
-
-Usar **Testcontainers** con PostgreSQL para flujos criticos que requieren transaccionalidad real.
+- Crear orden online + payment PENDING
+- Crear preferencia MP (mock)
+- Procesar webhook MP APPROVED + descontar stock
+- Procesar webhook MP REJECTED (sin descuento)
+- Webhook duplicado (idempotencia)
+- Pago aprobado sin stock suficiente → STOCK_CONFLICT
+- Abrir caja + registrar venta POS
+- Venta POS sin caja abierta (rechazada)
+- Cerrar caja con diferencia y sin explicacion (rechazada)
+- Cerrar caja con diferencia y con explicacion (aceptada)
+- Cancelar orden + revertir stock
+- Dos cajas abiertas en misma sucursal (rechazada)
 
 ---
 
-## Frontend
-
-Probar:
-
-- Componentes criticos (carrito, checkout, venta rapida)
-- Guards de rutas (autenticacion, roles)
-- Formularios de producto
-- Validaciones de stock en checkout
-
----
-
-## End-to-end
-
-Flujos candidatos para pruebas E2E:
-
-| Flujo | Descripcion |
-|---|---|
-| Cliente realiza pedido con retiro | Catalogo -> Carrito -> Checkout -> Pago -> Tracking |
-| Cliente realiza pedido con envio | Catalogo -> Carrito -> Checkout con direccion -> Pago |
-| Empleado registra venta presencial | Buscar producto -> Agregar al ticket -> Cobrar -> Stock se descuenta |
-| Administrador actualiza precio e imprime etiqueta | Cambiar precio -> Aprobar -> Imprimir etiqueta |
-| Administrador revisa bajo stock | Dashboard muestra alertas -> Sugerencia de reposicion |
-
----
-
-## Casos criticos de prueba
+## Casos criticos
 
 | Caso | Resultado esperado |
 |---|---|
-| Comprar mas unidades que stock disponible | El sistema rechaza la operacion |
-| Cancelar pedido con stock reservado | El stock se libera |
-| Modificar costo de producto sin permiso de admin | El sistema registra el cambio pero requiere aprobacion para aplicarlo al precio de venta |
-| Empleado intenta ver analytics global | Acceso denegado |
-| IA no encuentra productos disponibles | Responde sin inventar productos |
-| Dos usuarios compran el ultimo producto simultaneamente | Solo un pedido se confirma (transaccion) |
-| Cambio de sucursal en el carrito | El carrito se revalida contra nueva sucursal |
+| Comprar mas unidades que stock disponible | Rechazado (INSUFFICIENT_STOCK) |
+| Dos usuarios compran el ultimo producto | Solo uno confirma (transaccion FOR UPDATE) |
+| Webhook MP duplicado | Solo se procesa una vez (idempotencia) |
+| Pago MP aprobado sin stock | Order a STOCK_CONFLICT |
+| Venta POS sin caja abierta | Rechazada (CASH_SESSION_REQUIRED) |
+| Cerrar caja con diferencia sin explicacion | Rechazado (DIFFERENCE_REASON_REQUIRED) |
+| Cerrar caja con diferencia con explicacion | Aceptado, diferencia auditada |
+| CUSTOMER intenta abrir caja | Acceso denegado (403) |
+| EMPLOYEE cierra caja con diferencia | Exige explicacion (auditada) |
 
 ---
 
-> [!seealso] Notas relacionadas
-> - Volver a [[_Index]]
+> [!seealso] Volver a [[_Index]]

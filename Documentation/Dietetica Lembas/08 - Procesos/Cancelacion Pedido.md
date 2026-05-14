@@ -3,14 +3,14 @@ title: "Cancelacion de Pedido"
 tags:
   - procesos
   - cancelacion
-  - liberacion-stock
+  - reversion-stock
 ---
 
-# Proceso: Cancelacion de Pedido y Liberacion de Stock
+# Proceso: Cancelacion de Pedido y Reversion de Stock
 
-> [!info] Cuando un pedido se cancela, el stock reservado se libera automaticamente.
->
-> Para el MVP: si el pedido ya fue pagado, el pago permanece como APROBADO. El sistema no ejecuta reembolsos automaticos. Se registra una accion administrativa pendiente para que el administrador gestione el reintegro manualmente.
+> [!info] Al cancelar una orden pagada, el stock se revierte y el payment se actualiza.
+
+---
 
 ## Diagrama de secuencia
 
@@ -22,44 +22,30 @@ sequenceDiagram
     participant BE as Backend
     participant DB as PostgreSQL
 
-    Note over A,DB: 1. INICIAR CANCELACION
-    A->>FE: Abre detalle del pedido #123
-    FE->>BE: GET /api/admin/orders/123
-    BE->>DB: Select order + payments + reservas
-    DB-->>BE: Pedido PAGADO, reserva activa
-    BE-->>FE: Detalle con boton Cancelar
-
-    Note over A,DB: 2. CONFIRMAR
+    Note over A,DB: 1. CONFIRMAR CANCELACION
     A->>FE: Ingresa motivo, confirma
-    FE->>BE: PATCH /api/admin/orders/123/cancel
-
+    FE->>BE: PATCH /api/admin/orders/{id}/cancel
     BE->>BE: @Transactional
-    BE->>DB: Validar estado cancelable
-    DB-->>BE: PAGADO -> OK
-    Note over BE,DB: Para MVP: el pago aprobado NO se modifica.
-    Note over BE,DB: El reembolso es gestion manual fuera del sistema.
-    BE->>DB: UPDATE order -> CANCELADO
-    BE->>DB: UPDATE reservation -> LIBERADA
-    BE->>DB: UPDATE branch_stock (reservado -=)
-    BE->>DB: INSERT stock_movement
-    BE->>DB: INSERT audit_log (reembolso_pendiente)
-    BE-->>FE: Pedido cancelado
-    FE-->>A: Stock liberado. Gestionar reembolso manualmente.
+    BE->>DB: Buscar stock_movements originales de la orden
+    BE->>DB: UPDATE stock_lots (restaurar a los mismos lotes)
+    BE->>DB: INSERT stock_movement (type=CANCELLATION_RETURN)
+    BE->>DB: UPDATE payment (status=CANCELLED)
+    BE->>DB: UPDATE order (status=CANCELLED)
+    BE-->>FE: Orden cancelada
 ```
-
----
 
 ## Reglas de cancelacion
 
-| Estado actual | Se puede cancelar? | Accion sobre stock |
-|---|---|---|
-| PENDIENTE_PAGO | Si | No hay reserva |
-| PAGADO | Si | Liberar reserva |
-| EN_PREPARACION | Si | Liberar reserva |
-| LISTO_PARA_RETIRAR | Solo admin | Liberar reserva |
-| EN_REPARTO | Solo admin | Liberar reserva |
-| ENTREGADO | No | Stock ya descontado |
-| CANCELADO | No | Ya lo esta |
+| Estado actual | Se puede cancelar? | Accion sobre stock | Accion sobre payment |
+|---|---|---|---|
+| PENDING_PAYMENT | Si | No hay stock descontado | CANCELLED |
+| PAID | Si | Revertir stock | CANCELLED |
+| PREPARING | Si | Revertir stock | CANCELLED |
+| READY | Si (admin) | Revertir stock | CANCELLED |
+| DELIVERED | No | -- | -- |
+| CANCELLED | No | -- | -- |
+| STOCK_CONFLICT | Si | No hay stock descontado | CANCELLED |
+| PAYMENT_FAILED | Si | No hay stock descontado | CANCELLED |
 
 ---
 

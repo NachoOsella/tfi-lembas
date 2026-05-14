@@ -5,127 +5,103 @@ tags:
   - seguridad
   - roles
   - permisos
-  - rbac
 ---
 
 # Seguridad y Roles
 
-> [!info] Autenticacion y autorizacion basada en roles fijos para el MVP. Los permisos granulares quedan como evolucion futura.
+> [!info] Autenticacion JWT y autorizacion basada en roles fijos.
 
 ---
 
 ## Autenticacion
 
+- Registro de clientes (rol CUSTOMER)
 - Login con email y contrasena
-- Password hasheada con algoritmo seguro (BCrypt)
-- Tokens JWT para sesiones
-- Refresh token opcional
+- Password hasheada con BCrypt
+- Tokens JWT (24h de duracion)
 
 ---
 
 ## Roles del sistema
 
-Se definen cuatro roles:
-
-| Rol | Descripcion |
-|---|---|
-| `ADMIN_GENERAL` | Acceso total al sistema y configuracion del negocio |
-| `ENCARGADO_SUCURSAL` | Administra operacion de una sucursal especifica |
-| `EMPLEADO` | Opera ventas, pedidos, stock basico y tareas asignadas |
-| `CLIENTE` | Solo acceso a tienda online para comprar (para MVP se usa checkout invitado; el rol CLIENTE es opcional y aplica si se implementa registro de clientes en el futuro) |
+| Rol | Descripcion | branch_id |
+|---|---|---|
+| `ADMIN` | Acceso total al sistema | Opcional |
+| `MANAGER` | Gestion operativa de sucursal | Obligatorio |
+| `EMPLOYEE` | Ventas, preparacion, consulta stock, caja | Obligatorio |
+| `CUSTOMER` | Cliente registrado que compra online | Debe ser null |
 
 ---
 
 ## Matriz de acceso por rol
 
-| Modulo | Admin General | Encargado Sucursal | Empleado | Cliente |
+| Modulo | ADMIN | MANAGER | EMPLOYEE | CUSTOMER |
 |---|---:|---:|---:|---:|
 | Catalogo publico | Si | Si | Si | Si |
-| Comprar online (checkout invitado) | -- | -- | -- | Si |
+| Comprar online | -- | -- | -- | Si |
 | Productos (ABM) | Si | Parcial | No | No |
-| Stock (gestion) | Si | Si | Parcial (consulta) | No |
-| Ventas presenciales | Si | Si | Si | No |
-| Pedidos (todos) | Si | Si | Solo preparacion | Solo propios |
-| Proveedores | Si | Parcial (consulta) | No | No |
-| Precios | Si | Parcial (consulta) | No | No |
-| Analytics | Si (global) | Si (sucursal) | No/parcial | No |
-| Usuarios | Si | Parcial (sucursal) | No | No |
-| Configuracion | Si | No/parcial | No | No |
+| Stock (gestion) | Si | Si | Consulta | No |
+| Caja (abrir/cerrar) | Si | Si | Si | No |
+| Ventas presenciales (POS) | Si | Si | Si | No |
+| Ordenes | Si | Si | Preparacion | Solo propias |
+| Proveedores | Si | Consulta | No | No |
+| Reportes | Si (global) | Si (sucursal) | No | No |
+| Usuarios internos | Si | Parcial | No | Solo su perfil |
+| Pagos online (MP) | -- | -- | -- | Si |
+| Webhooks MP | -- | -- | -- | -- |
 
 ---
 
-## Permisos por accion
+## Permisos detallados
 
-### Administrador general
+### ADMIN
+- Gestionar usuarios, sucursales, productos, proveedores
+- Abrir y cerrar caja
+- Ver y gestionar todas las cajas
+- Ver reportes completos
+- Auditar eventos
 
-- Gestionar empresa
-- Gestionar sucursales
-- Gestionar usuarios y asignacion de roles fijos
-- Gestionar productos, categorias, marcas
-- Gestionar proveedores
-- Ver todas las ventas (global)
-- Ver reportes globales
-- Configurar margenes y reglas comerciales
-- Aprobar cambios masivos de precio (post-MVP, cuando se implemente importacion automatica)
-- Ver analytics completos
+### MANAGER
+- Abrir y cerrar caja de su sucursal
+- Gestionar ventas presenciales
+- Registrar movimientos de caja
+- Ver reportes operativos de su sucursal
+- Preparar ordenes online
 
-### Encargado de sucursal
+### EMPLOYEE
+- Abrir y cerrar caja (queda auditado)
+- Registrar venta presencial (requiere caja abierta)
+- Registrar pagos presenciales
+- Consultar stock
+- Preparar pedidos online
+- Registrar movimientos simples de caja
+- Si cierra caja con diferencia, debe explicar obligatoriamente
 
-- Ver stock de su sucursal
-- Gestionar ventas de su sucursal
-- Gestionar pedidos asignados a su sucursal
-- Preparar entregas/retiros
-- Registrar ajustes de stock justificados
-- Ver reportes de su sucursal
-- Imprimir etiquetas
-
-### Empleado
-
-- Realizar ventas presenciales
-- Buscar productos
-- Escanear codigos de barras
-- Preparar pedidos
-- Registrar consumo interno (si esta permitido)
-- Reportar mermas o problemas
-- Consultar stock basico
-
-### Cliente
-
+### CUSTOMER
+- Registrarse e iniciar sesion
 - Ver catalogo
-- Buscar productos
-- Agregar al carrito
-- Realizar pedido
-- Pagar mediante link
-- Consultar estado del pedido
-- Recibir recomendaciones
+- Usar carrito local
+- Crear orden online
+- Pagar con Mercado Pago Checkout Pro
+- Consultar sus pedidos
+- NO puede abrir/cerrar/consultar caja
 
 ---
 
 ## Auditoria
 
-Acciones que deben quedar registradas con fecha, usuario y motivo:
+Eventos registrados en `audit_logs` con usuario, fecha y descripcion:
 
-- Cambio de precio
-- Cambio masivo de precios
+- Cambio de precio de venta
 - Ajuste manual de stock
-- Cancelacion de pedido
-- Cambio de estado de pago
-- Creacion/desactivacion de usuarios
-- Cambio de rol de usuario
-- Registro de merma/vencimiento
-
----
-
-## Reglas de seguridad adicionales
-
-- El sistema no almacena datos sensibles de tarjetas de credito/debito.
-- El asistente IA no debe exponer datos internos al cliente (margenes, costos).
-- El asistente IA no debe hacer diagnosticos medicos ni prometer beneficios de salud.
-- Las contrasenas deben cumplir con politicas de complejidad minima.
+- Cancelacion de orden
+- Apertura y cierre de caja
+- Confirmacion de pago (webhook MP)
+- Movimientos de caja
+- Alta/baja de usuarios internos
 
 ---
 
 > [!seealso] Notas relacionadas
-> - [[Funcionales]] -- requisitos funcionales asociados (RF-050 a RF-054)
-> - [[02 - Modulos/Asistente Inteligente]] -- reglas de seguridad del asistente
+> - [[Funcionales]]
 > - Volver a [[_Index]]

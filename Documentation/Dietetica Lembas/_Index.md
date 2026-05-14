@@ -53,6 +53,7 @@ mindmap
       Epicas
       User Stories
       Roadmap
+      Plan Scrum (Jira)
     Referencias
       Endpoints API
       Testing
@@ -81,9 +82,9 @@ mindmap
 | [[01 - Contexto/Cliente\|Cliente]] | [[01 - Contexto/Cliente]] | Contexto real de Dietetica Lembas |
 | [[01 - Contexto/Problematica\|Problematica]] | [[01 - Contexto/Problematica]] | Problemas que resuelve el sistema |
 | [[01 - Contexto/Propuesta\|Propuesta]] | [[01 - Contexto/Propuesta]] | Solucion propuesta |
-| [[02 - Modulos/Tienda Online\|Tienda Online]] | [[02 - Modulos/Tienda Online]] | Modulo e-commerce para clientes |
+| [[02 - Modulos/Tienda Online\|Tienda Online]] | [[02 - Modulos/Tienda Online]] | Modulo e-commerce para clientes registrados (rol CUSTOMER) |
 | [[02 - Modulos/Backoffice\|Backoffice]] | [[02 - Modulos/Backoffice]] | Modulo de administracion interna |
-| [[02 - Modulos/Asistente Inteligente\|Asistente Inteligente]] | [[02 - Modulos/Asistente Inteligente]] | Modulo de recomendaciones basado en reglas |
+| [[02 - Modulos/Asistente Inteligente\|Recomendaciones]] | [[02 - Modulos/Asistente Inteligente]] | Modulo de recomendaciones basado en reglas |
 | [[03 - Dominio/Modelo de Datos\|Modelo de Datos]] | [[03 - Dominio/Modelo de Datos]] | Entidades y relaciones del dominio |
 | [[03 - Dominio/Reglas de Stock\|Reglas de Stock]] | [[03 - Dominio/Reglas de Stock]] | Reglas de stock multisucursal |
 | [[03 - Dominio/Reglas de Precios\|Reglas de Precios]] | [[03 - Dominio/Reglas de Precios]] | Reglas de precios y promociones |
@@ -99,7 +100,8 @@ mindmap
 | [[06 - Planificacion/MVP\|MVP]] | [[06 - Planificacion/MVP]] | Version minima viable |
 | [[06 - Planificacion/Epicas\|Epicas]] | [[06 - Planificacion/Epicas]] | Epicas del proyecto |
 | [[06 - Planificacion/User Stories\|User Stories]] | [[06 - Planificacion/User Stories]] | Historias de usuario |
-| [[06 - Planificacion/Roadmap\|Roadmap]] | [[06 - Planificacion/Roadmap]] | Iteraciones y roadmap futuro |
+| [[06 - Planificacion/Roadmap\|Roadmap]] | [[06 - Planificacion/Roadmap]] | 4 sprints, roadmap y futuro |
+| [[06 - Planificacion/plan_scrum_dietetica_lembas_jira\|Plan Scrum]] | [[06 - Planificacion/plan_scrum_dietetica_lembas_jira]] | Plan detallado para carga en Jira |
 | [[07 - Referencias/Endpoints API\|Endpoints API]] | [[07 - Referencias/Endpoints API]] | Endpoints de la API REST |
 | [[07 - Referencias/Testing\|Testing]] | [[07 - Referencias/Testing]] | Estrategia de testing |
 | [[07 - Referencias/Despliegue\|Despliegue]] | [[07 - Referencias/Despliegue]] | Estrategia de despliegue |

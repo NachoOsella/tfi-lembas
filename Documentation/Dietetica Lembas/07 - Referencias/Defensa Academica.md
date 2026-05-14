@@ -35,14 +35,14 @@ El sistema no se limita a ABMs porque implementa **procesos completos**:
 El proyecto supera un e-commerce basico porque integra:
 
 - **Backoffice real** para operacion diaria del negocio
-- Gestion de proveedores con historial de costos
-- Control de precios, margenes y actualizacion asistida
-- Stock por sucursal con lotes y vencimientos
+- **Registro de clientes** con rol CUSTOMER y autenticacion JWT
+- **Stock por lotes con FEFO** y trazabilidad completa de movimientos
+- Gestion de proveedores con costos manuales
+- Stock por sucursal con control de vencimientos
 - Ventas presenciales con scanner y descuento de stock
-- Impresion de etiquetas para gondola
 - Reposicion sugerida basada en ventas y stock
-- Analytics de negocio para toma de decisiones
-- Roles y permisos diferenciados
+- Reportes basicos con metricas del negocio
+- Roles y permisos diferenciados (ADMIN, MANAGER, EMPLOYEE, CUSTOMER)
 - Auditoria de acciones criticas
 
 ---

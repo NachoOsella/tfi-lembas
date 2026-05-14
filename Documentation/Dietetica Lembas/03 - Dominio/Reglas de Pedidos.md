@@ -4,144 +4,97 @@ tags:
   - dominio
   - pedidos
   - pagos
-  - entregas
   - reglas-negocio
 ---
 
-# Reglas de Pedidos, Pagos y Entregas
+# Reglas de Pedidos, Pagos y Entregas (MVP)
 
-> [!info] Reglas de negocio para el ciclo de vida de pedidos online y su interaccion con stock y pagos.
+> [!info] Ordenes unificadas (POS y ONLINE). Pagos con Mercado Pago (online) o caja (presencial).
 
 ---
 
-## Reglas de pedidos
+## Reglas de ordenes
 
-- Un pedido online debe tener al menos un producto.
-- Un pedido debe estar asociado a una sucursal.
-- Un pedido puede ser de retiro o envio.
-- Un pedido no puede pasar a "listo para retirar" si no fue preparado.
-- Un pedido no puede marcarse como entregado si no fue pagado, salvo configuracion explicita.
-- Un pedido cancelado debe liberar stock reservado si corresponde.
+- Una orden debe tener al menos un item.
+- Una orden debe estar asociada a una sucursal.
+- `type`: `POS` (presencial) u `ONLINE` (e-commerce).
+- `fulfillment_type`: solo `PICKUP` en MVP. Sin envio.
+- ONLINE requiere `customer_user_id` (cliente registrado).
+- POS requiere `created_by_user_id` (usuario interno).
+- ONLINE se crea en `PENDING_PAYMENT`. POS se crea directo en `PAID`.
+- POS requiere caja abierta en la sucursal.
+- Cancelacion revierte stock y actualiza payment.
 
 ## Reglas de pagos
 
-- Un pedido puede tener pago pendiente, aprobado, rechazado o cancelado.
-- El sistema no almacena datos sensibles de tarjetas.
-- El link de pago puede estar simulado o integrado mediante adaptador.
-- Una venta presencial puede registrar QR, efectivo, transferencia u otro metodo configurado.
+- Toda orden tiene al menos un `payment` asociado.
+- ONLINE: `provider=MERCADO_PAGO`, `method=CHECKOUT_PRO`, `cash_session_id=null`.
+- POS: `provider=MANUAL`, `method` segun medio, `cash_session_id` de caja abierta.
+- Pagos online se procesan via webhook de MP.
+- Pagos presenciales se registran al cobrar (APPROVED directo).
+- No almacenar datos sensibles de tarjetas.
 
-## Reglas de entregas
-
-- Un pedido con retiro se completa cuando el cliente lo retira en sucursal.
-- Un pedido con envio se completa cuando se marca como entregado.
-- La logistica externa queda fuera del alcance del MVP (se gestiona manualmente por el comercio).
-
----
-
-## Flujo de compra online con retiro
+## Flujo de compra online
 
 ```text
-Cliente consulta catalogo
+Cliente registrado inicia sesion
     ↓
-Selecciona productos
+Navega catalogo, agrega al carrito local
     ↓
-Selecciona retiro en sucursal
+Confirma compra → POST /api/customer/orders
     ↓
-Sistema valida stock (sin reservar)
+Crea order (ONLINE, PENDING_PAYMENT) y payment (PENDING)
     ↓
-Sistema genera pedido (PENDIENTE_PAGO)
+Cliente solicita checkout → POST /api/customer/orders/{id}/checkout/mp
     ↓
-Cliente paga mediante link
+Backend crea preferencia en MP, devuelve initPoint
     ↓
-Sistema revalida stock y precio → crea reserva
+Cliente paga en MP Checkout Pro
     ↓
-Pedido pasa a PAGADO
+MP envia webhook → Backend verifica y procesa
     ↓
-Empleado prepara pedido (EN_PREPARACION)
+Si APPROVED: actualiza payment, descuenta stock FEFO, order a PAID
     ↓
-Pedido pasa a LISTO_PARA_RETIRAR
+Si REJECTED: actualiza payment, order a PAYMENT_FAILED
     ↓
-Cliente retira
+Si sin stock al aprobar: order a STOCK_CONFLICT
     ↓
-Pedido pasa a ENTREGADO
+Empleado prepara → PREPARING → READY
     ↓
-Sistema confirma reserva y descuenta stock definitivamente
+Cliente retira → DELIVERED (no descuenta stock)
 ```
 
-## Flujo de compra online con envio
+## Flujo de venta presencial
 
 ```text
-Cliente consulta catalogo
+Empleado abre caja (monto inicial de efectivo)
     ↓
-Selecciona productos
+Empleado inicia venta POS
     ↓
-Indica direccion de entrega
+Escanea productos
     ↓
-Sistema valida stock (sin reservar)
+Cobra con cualquier medio (efectivo, QR, transferencia, debito, credito)
     ↓
-Sistema genera pedido (PENDIENTE_PAGO)
+Sistema: valida stock, descuenta FEFO, crea order POS, crea payment asociado a caja
     ↓
-Cliente paga mediante link
+Empleado cierra caja
     ↓
-Sistema revalida stock y precio → crea reserva
+Sistema calcula efectivo esperado vs contado
     ↓
-Pedido pasa a PAGADO
-    ↓
-Empleado prepara pedido (EN_PREPARACION)
-    ↓
-Pedido pasa a EN_REPARTO
-    ↓
-Pedido pasa a ENTREGADO
-    ↓
-Sistema confirma reserva y descuenta stock definitivamente
+Si hay diferencia, se exige explicacion
 ```
-
----
-
-## Estados de pago
-
-Para MVP:
-
-```text
-PENDIENTE
-APROBADO
-RECHAZADO
-CANCELADO
-```
-
----
-
-## Estados de pedido (MVP)
-
-```text
-PENDIENTE_PAGO
-PAGADO
-EN_PREPARACION
-LISTO_PARA_RETIRAR
-EN_REPARTO
-ENTREGADO
-CANCELADO
-```
-
----
 
 ## Integracion con stock
 
-> [!important] Para el MVP, la reserva de stock se crea recien cuando el pago simulado queda aprobado.
-> Antes de aprobar el pago, el sistema debe revalidar precio, promociones y stock disponible dentro de una transaccion.
-
-- Al crear el pedido: se valida stock disponible, pero no se reserva stock todavia.
-- Al aprobar el pago: se revalida stock disponible y precio efectivo. Si siguen siendo validos, se crea la reserva de stock de la sucursal seleccionada.
-- Si no hay stock al aprobar el pago: el pago queda rechazado o pendiente de revision, y el pedido no avanza a `PAGADO`.
-- Al entregar/retirar: la reserva se convierte en salida definitiva de stock.
-- Al cancelar: se libera la reserva de stock si ya existia.
+- ONLINE: stock se valida al crear orden y se revalida al aprobar pago.
+- POS: stock se descuenta al cobrar (misma transaccion).
+- Si al aprobar pago online no hay stock suficiente: `STOCK_CONFLICT`.
+- Cancelacion: revierte stock con `CANCELLATION_RETURN`.
 
 ---
 
 > [!seealso] Notas relacionadas
-> - [[Modelo de Datos]] -- entidades PedidoOnline, PedidoOnlineItem, Pago, Entrega, ReservaStock
-> - [[Reglas de Stock]] -- interaccion reservas y stock
-> - [[Maquina de Estados]] -- diagrama de estados de pedido
-> - [[02 - Modulos/Tienda Online]] -- checkout y tracking
-> - [[02 - Modulos/Backoffice]] -- gestion de pedidos
+> - [[Modelo de Datos]]
+> - [[Reglas de Stock]]
+> - [[Maquina de Estados]]
 > - Volver a [[_Index]]

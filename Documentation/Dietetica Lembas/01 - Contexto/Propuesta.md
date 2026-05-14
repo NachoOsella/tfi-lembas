@@ -22,20 +22,20 @@ Se propone desarrollar una plataforma web compuesta por **tres grandes areas**:
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"darkMode": true, "background": "#1d2021", "primaryColor": "#32302f", "primaryTextColor": "#d4be98", "primaryBorderColor": "#d4be98", "lineColor": "#d4be98", "secondaryColor": "#32302f", "tertiaryColor": "#1d2021", "textColor": "#d4be98", "noteBkgColor": "#32302f", "noteTextColor": "#d4be98", "noteBorderColor": "#d8a657", "actorBkg": "#32302f", "actorTextColor": "#d4be98", "actorLineColor": "#d4be98", "signalColor": "#7daea3", "signalTextColor": "#d4be98", "labelBoxBkgColor": "#32302f", "labelBoxBorderColor": "#d4be98", "labelTextColor": "#d4be98", "loopTextColor": "#d4be98"}}%%
 flowchart TD
-    A[Cliente final] --> B[Tienda online]
-    B --> C[Carrito]
-    C --> D[Checkout]
-    D --> E[Pedido online]
-    E --> F[Pago QR / Link]
-    E --> G[Retiro o entrega]
-    H[Administrador / empleado] --> I[Backoffice]
-    I --> J[Productos y stock]
-    I --> K[Proveedores y precios]
-    I --> L[Pedidos y entregas]
-    I --> M[Ventas presenciales]
-    I --> N[Analytics]
-    O[Modulo inteligente] --> B
-    O --> I
+    A[Cliente final] --> B[Registro / Login]
+    B --> C[Tienda online]
+    C --> D[Carrito local]
+    D --> E[Confirmar compra]
+    E --> F[Pedido online]
+    F --> G[Pago manual]
+    G --> H[Retiro en sucursal]
+    I[Administrador / empleado] --> J[Backoffice]
+    J --> K[Productos y stock]
+    J --> L[Proveedores y precios]
+    J --> M[Pedidos y entregas]
+    J --> N[Ventas presenciales]
+    J --> O[Reportes]
+    P[Recomendaciones] --> J
 ```
 
 ## Valor diferencial

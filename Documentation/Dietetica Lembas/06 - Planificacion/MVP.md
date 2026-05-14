@@ -8,90 +8,128 @@ tags:
 
 # MVP - Version Minima Viable
 
-> [!info] El MVP debe demostrar el flujo principal completo de punta a punta.
+> [!info] El MVP debe demostrar el flujo completo: tienda online con Mercado Pago Checkout Pro, caja operativa, venta POS, stock por lotes FEFO y pagos unificados.
 
 ---
 
-## Criterio de exito del MVP
-
-> [!important] El MVP se considera exitoso si permite demostrar el siguiente flujo completo:
+## Criterio de exito
 
 ```text
-Administrador carga productos y stock
+CLIENTE (CUSTOMER):
+  Registrarse e iniciar sesion
     ↓
-Cliente ve productos disponibles en tienda online
+  Navegar catalogo, agregar al carrito local
     ↓
-Cliente agrega productos al carrito
+  Confirmar compra → order ONLINE PENDING_PAYMENT
     ↓
-Cliente confirma pedido con retiro/envio
+  Pagar con Mercado Pago Checkout Pro
     ↓
-Sistema genera link de pago o QR
+  Recibir confirmacion → stock descontado FEFO
     ↓
-Pago se registra como aprobado
-    ↓
-Empleado prepara pedido
-    ↓
-Pedido cambia de estado hasta entregado
-    ↓
-Stock se actualiza correctamente
-    ↓
-Dashboard refleja ventas y stock
-    ↓
-Sistema sugiere reposicion/recomendaciones
-```
+  Seguir estado: PAID → PREPARING → READY → DELIVERED
 
-Si este flujo funciona de punta a punta, el proyecto demuestra valor real, integracion entre modulos y complejidad suficiente para defensa.
+EMPLEADO:
+  Abrir caja con monto inicial de efectivo
+    ↓
+  Vender en POS con scanner y multiples medios de pago
+    ↓
+  Registrar movimientos manuales de caja
+    ↓
+  Preparar pedidos online, marcar listos y entregar
+    ↓
+  Cerrar caja comparando efectivo esperado vs contado
+
+ADMIN:
+  Gestionar productos, stock por lotes, proveedores y costos
+    ↓
+  Ver dashboard operativo del dia
+    ↓
+  Revisar reporte de cierre de caja
+    ↓
+  Ver recomendaciones automaticas por reglas
+    ↓
+  Cancelar ordenes con reversion de stock
+```
 
 ---
 
-## Alcance incluido en el MVP
+## Planificacion: 4 sprints de 2 semanas
+
+| Sprint | Objetivo | Story points |
+|---|---|---:|
+| [[Roadmap#Sprint 1]] | Base tecnica, autenticacion, catalogo y tienda publica inicial | 75 |
+| [[Roadmap#Sprint 2]] | Stock por lotes, ordenes online, carrito local, proveedores y pagos base | 75 |
+| [[Roadmap#Sprint 3]] | Mercado Pago, webhook, descuento FEFO online, caja operativa y venta POS | 75 |
+| [[Roadmap#Sprint 4]] | Estados de pedidos, cancelacion, reportes, auditoria, seguridad y despliegue demo | 75 |
+
+---
+
+## Epics del proyecto
+
+| Key | Epica | Descripcion |
+|---|---|---|
+| EP-00 | Plataforma tecnica, calidad y despliegue | Base transversal: estructura, Docker, perfiles, errores, testing, CI/CD, datos demo, documentacion y despliegue. |
+| EP-01 | Autenticacion y registro | Registro CUSTOMER, login, JWT, BCrypt, sesion frontend y seguridad base. |
+| EP-02 | Gestion de catalogo | Categorias, productos, precios, codigos de barras, imagen unica y estado online. |
+| EP-03 | Tienda online | Catalogo publico, carrito local, checkout autenticado, consulta de pedidos propios y resultado de compra. |
+| EP-04 | Mercado Pago Checkout Pro | Adaptador de pago, creacion de preferencia, webhook, idempotencia y estados de pago. |
+| EP-05 | Stock | Stock por lotes y sucursal, movimientos, FEFO, ajustes, alertas de vencimiento y bajo stock. |
+| EP-06 | Pedidos | Ordenes unificadas POS/ONLINE, items con snapshot, maquina de estados, preparacion, entrega y cancelacion. |
+| EP-07 | Caja operativa | Apertura, caja actual, movimientos manuales, cierre, arqueo de efectivo y diferencia justificada. |
+| EP-08 | Ventas presenciales POS | Venta rapida con busqueda/codigo de barras, caja abierta obligatoria, cobro y descuento FEFO. |
+| EP-09 | Pagos unificados | Tabla payments comun para pagos online y presenciales, metodos, estados y trazabilidad. |
+| EP-10 | Proveedores | ABM de proveedores, asociacion producto-proveedor y costo manual actual. |
+| EP-11 | Reportes y recomendaciones | Dashboard, reporte de caja, recomendaciones por reglas, stock bajo, vencimientos y rotacion. |
+| EP-12 | Usuarios y roles | Usuarios internos, asignacion de sucursal, RBAC por rol y visibilidad de interfaz segun permisos. |
+
+---
+
+## Riesgos y controles
+
+| Riesgo | Control |
+|---|---|
+| Scope creep por funcionalidades post-MVP | Mantener fuera del sprint backlog salvo que el tutor los exija formalmente. |
+| Sobreventa por concurrencia POS + webhook | Transacciones y bloqueo pesimista SELECT FOR UPDATE en stock_lots. |
+| Webhook duplicado de MP descontando dos veces | Idempotencia por provider_payment_id y tests de duplicado. |
+| Caja mal interpretada como control de todos los medios | Arqueo solo de efectivo; totales por otros metodos son informativos. |
+| Roles mezclados entre CUSTOMER y usuarios internos | CUSTOMER con branch_id null y rutas customer/admin separadas. |
+
+---
+
+## Alcance incluido
 
 | Area | Incluye |
 |---|---|
-| Autenticacion | Login y roles basicos |
-| Empresa | Configuracion basica |
-| Sucursales | Gestion de sucursales |
-| Productos | ABM, categorias, etiquetas |
-| Stock | Stock por sucursal, movimientos basicos |
-| Catalogo online | Visualizacion de productos publicados |
-| Carrito | Agregar/quitar productos, validacion de stock |
-| Checkout | Confirmacion de pedido, seleccion de sucursal |
-| Pedido online | Creacion, estados, tracking basico |
-| Retiro/Envio | Datos de entrega, cambios de estado |
-| Pago | Link de pago simulado, QR representativo |
-| Venta presencial | Venta rapida con busqueda/scan |
-| Codigo de barras | Busqueda por codigo (input teclado) |
-| Proveedores | Registro basico, asociacion productos |
-| Costos de proveedor | Carga manual de costo por producto-proveedor |
-| Analytics | Dashboard basico con metricas principales |
-| Etiquetas | Impresion simple de precios |
-| IA | Recomendador acotado basado en reglas |
+| Autenticacion | Registro de cliente, login, JWT |
+| Sucursales | 1 sucursal real, entidad preparada para mas |
+| Productos | ABM, categorias, precio, marca texto, imagen unica |
+| Catalogo online | Productos publicados, busqueda, detalle |
+| Carrito | LocalStorage en frontend |
+| Tienda online | MP Checkout Pro, webhook, solo retiro |
+| Caja | Apertura, movimientos, cierre con arqueo de efectivo |
+| Ventas presenciales | POS con caja, multiples medios de pago |
+| Stock | Lotes con vencimiento, FEFO, movimientos |
+| Pagos | Tabla unificada para online y presenciales |
+| Proveedores | Registro, asociacion producto, costo manual |
+| Reportes | Dashboard, reporte de caja, recomendaciones |
+| Roles | ADMIN, MANAGER, EMPLOYEE, CUSTOMER |
 
----
-
-## Alcance excluido del MVP
+## Alcance excluido
 
 | Funcionalidad | Motivo |
 |---|---|
-| Marketplace multiempresa | Complejidad excesiva |
-| Franquicias complejas | Reglas avanzadas de permisos |
-| Facturacion fiscal | Normativa fiscal, responsabilidad legal |
-| Logistica externa (OCA, Andreani) | APIs externas, costos |
-| WhatsApp automatico | API oficial, plantillas |
-| OCR de facturas/listas | Complejo, no central al e-commerce |
-| App mobile nativa | Duplica esfuerzo frontend |
-| IA avanzada con historial individual | Privacidad, complejidad |
-| Fidelizacion/puntos/cupones | No necesario para validar MVP |
-| POS fiscal completo | Excede objetivo academico |
-| Gestion contable completa | Transformaria el proyecto en ERP |
-| Importacion automatica de listas de precios (CSV, comparacion batch) | Se ingresa el costo manualmente por producto; la automatizacion queda como mejora futura |
-| Compras automaticas a proveedores | Integracion real con proveedores |
-| Balanzas electronicas | Hardware especifico |
+| Envio a domicilio | Solo retiro en sucursal |
+| Carrito persistente en BD | Se usa localStorage |
+| Facturacion fiscal | Excede alcance academico |
+| App mobile nativa | Duplica esfuerzo |
+| Multiempresa | Unico negocio |
+| Logistica externa | Post-MVP |
+| Importacion automatica | Post-MVP |
 
 ---
 
 > [!seealso] Notas relacionadas
-> - [[Epicas]] -- epics del proyecto
-> - [[User Stories]] -- historias de usuario
-> - [[Roadmap]] -- iteraciones y roadmap futuro
+> - [[Epicas]]
+> - [[User Stories]]
+> - [[Roadmap]]
 > - Volver a [[_Index]]

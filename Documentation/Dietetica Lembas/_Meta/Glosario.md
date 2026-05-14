@@ -6,31 +6,24 @@ tags:
   - glosario
 ---
 
-# Glosario
-
-> [!quote] Definiciones de terminos clave del sistema.
+# Glosario (MVP)
 
 | Termino | Definicion |
 |---|---|
-| Backoffice | Area interna del sistema usada por administradores y empleados para gestionar la operacion. |
-| Catalogo | Conjunto de productos visibles en la tienda online. |
-| Checkout | Proceso final de compra donde se confirma pedido, entrega y pago. |
-| Stock reservado | Stock apartado temporalmente para un pedido online pendiente. |
-| Merma | Perdida de producto por rotura, vencimiento u otra causa. |
-| Consumo interno | Producto consumido por empleados o uso interno del negocio. |
-| Lista de precios | Relacion de costos enviada por un proveedor. En el MVP se ingresa manualmente por producto; la importacion automatica queda como mejora futura. |
-| Margen | Diferencia entre costo de reposicion y precio de venta. |
-| QR de pago | Codigo utilizado para iniciar un pago presencial. |
-| Link de pago | Enlace para pagar un pedido online. |
-| Reposicion sugerida | Recomendacion de compra de productos basada en stock y ventas. |
-| Sucursal | Ubicacion fisica del negocio con stock propio. |
-| Lote | Conjunto de unidades de un producto con una misma fecha de ingreso y vencimiento. |
-| RBAC | Control de acceso basado en roles (Role-Based Access Control). |
-| MVP | Version minima viable que demuestra el flujo principal completo. |
-| FEFO | First Expired, First Out -- criterio para descontar stock priorizando lo que vence primero. |
-| ERP | Sistema de planificacion de recursos empresariales (Enterprise Resource Planning). |
-| Omnicanal | Estrategia que integra canales de venta fisicos y digitales. |
-| Adaptador | Capa de abstraccion para integrar servicios externos sin acoplar el dominio. |
+| Backoffice | Area interna del sistema usada por administradores y empleados |
+| Catalogo | Productos visibles en la tienda online |
+| Checkout | Proceso de confirmacion de compra. Requiere autenticacion CUSTOMER |
+| Caja | Sesion operativa de venta presencial. Se abre y cierra por turno |
+| Arqueo | Conteo de efectivo fisico al cerrar caja |
+| Mercado Pago Checkout Pro | Pasarela de pago para la tienda online |
+| Webhook | Notificacion de MP al backend cuando hay un pago |
+| Preferencia de pago | Configuracion de pago creada en MP para una orden |
+| Stock disponible | SUM(stock_lots.quantity_available) por producto y sucursal |
+| Lote | Conjunto de unidades con misma fecha de vencimiento |
+| FEFO | First Expired, First Out |
+| POS | Point of Sale - venta presencial |
+| Payment | Registro unificado de pago (online o presencial) |
+| PICKUP | Retiro en sucursal (unica modalidad en MVP) |
 
 ---
 
