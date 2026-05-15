@@ -33,11 +33,25 @@ tags:
 - La estructura queda documentada en README tecnico.
 
 **Subtareas sugeridas:**
-- Crear repositorio/estructura con carpetas backend, frontend, infra y docs.
+
+**Backend:**
+- Crear estructura de proyecto backend con modulos: auth, users, catalog, inventory, orders, payments, cash, suppliers, reports, audit y shared.
 - Crear paquete shared para DTOs comunes, excepciones y utilidades.
-- Configurar perfiles dev/test en backend y environment files en Angular.
+- Configurar perfiles dev/test en application.yml.
+- Configurar dependencias base (Spring Boot, JPA, Security, Flyway, Validation).
+- Definir convencion de nombres para endpoints, DTOs y servicios.
+
+**Frontend:**
+- Inicializar proyecto Angular 18+ con standalone components y routing.
+- Crear estructura de carpetas por features: store, customer, admin, auth y shared.
+- Crear modulo shared con componentes base: LoadingSpinner, EmptyState, ErrorAlert, ConfirmDialog.
+- Crear layout base para tienda publica (StoreLayout: header con logo + nav + icono carrito, footer).
+- Crear layout base para backoffice (AdminLayout: sidebar colapsable, topbar con usuario, breadcrumbs).
+- Configurar Angular Material y tema base (colores, tipografia, espaciados).
+- Configurar archivos environment.ts y environment.development.ts con apiUrl.
+- Configurar proxy para desarrollo local (proxy.conf.json hacia backend en :8080).
+- Configurar ESLint, Prettier y convencion de nombres para componentes, servicios y rutas.
 - Agregar README con comandos de ejecucion, estructura y convenciones de ramas.
-- Definir convencion de nombres para endpoints, DTOs, servicios y componentes.
 
 ---
 
@@ -54,11 +68,17 @@ tags:
 - Hay archivo .env.example sin credenciales reales.
 
 **Subtareas sugeridas:**
+
+**Backend / Infra:**
 - Crear docker-compose.yml con PostgreSQL 16 y red interna.
 - Definir variables DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD y JWT_SECRET.
 - Configurar application-dev.yml y application-test.yml.
 - Agregar script de reset de base local para desarrollo.
 - Documentar comandos: up, down, logs, migrate y seed.
+
+**Frontend:**
+- Agregar script npm run docker:up que levante solo la BD para desarrollo frontend.
+- Verificar que el frontend se conecte al backend en Docker sin CORS issues.
 
 ---
 
@@ -75,12 +95,17 @@ tags:
 - Hay seed inicial minimo para operar la demo.
 
 **Subtareas sugeridas:**
+
+**Backend / DB:**
 - Configurar dependencia Flyway en Spring Boot.
 - Crear V1__core.sql con branches y users.
 - Crear V2__catalog.sql con categories y products.
 - Agregar CHECK para role ADMIN/MANAGER/EMPLOYEE/CUSTOMER.
 - Agregar CHECK para online_status DRAFT/PUBLISHED/PAUSED/HIDDEN.
 - Crear V10__seed_data.sql parcial con sucursal Centro, admin demo y categorias base.
+
+**Frontend:**
+- No requiere subtareas frontend directas (es puramente DB).
 
 ---
 
@@ -97,11 +122,23 @@ tags:
 - CUSTOMER queda con branch_id null.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear User entity, UserRepository y Role enum.
 - Crear RegisterRequest, AuthResponse y UserDto.
 - Implementar AuthService.registerCustomer().
 - Validar email, password, firstName, lastName y phone opcional.
 - Crear tests unitarios de registro exitoso, email duplicado y password hash.
+
+**Frontend:**
+- Crear RegisterPageComponent con formulario de registro (nombre, apellido, email, password, confirmar password, telefono opcional).
+- Agregar validaciones en tiempo real: email formato, password >= 8 caracteres, confirmacion coincide.
+- Mostrar errores especificos del backend: EMAIL_DUPLICATED, VALIDATION_ERROR.
+- Crear AuthService con metodo register().
+- Redirigir a login con mensaje de exito al registrarse.
+- Agregar ruta /auth/register con layout publico.
+- Manejar estados: loading (boton deshabilitado + spinner), error (mensaje claro), exito (redirect).
+- Agregar tests unitarios del componente (formulario valido, invalido, errores backend).
 
 ---
 
@@ -118,12 +155,28 @@ tags:
 - GET /api/auth/me devuelve usuario autenticado desde el token.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Configurar Spring Security stateless y BCryptPasswordEncoder.
 - Implementar JwtService para generar y validar token de 24h.
 - Implementar JwtAuthenticationFilter.
 - Configurar rutas publicas /api/auth/**, /api/store/**, /api/webhooks/** y /uploads/**.
 - Crear AuthController con login y me.
 - Agregar tests de login, token invalido y usuario deshabilitado.
+
+**Frontend:**
+- Crear LoginPageComponent con formulario de email + password.
+- Crear AuthService con metodos login(), logout(), getToken(), isAuthenticated(), getUserRole().
+- Almacenar token en localStorage y decodificar payload para datos basicos del usuario.
+- Crear AuthInterceptor que adjunte token JWT en cada request.
+- Crear AuthGuard con logica de redireccion segun autenticacion y rol.
+- Crear AdminGuard (redirige a /store si no es ADMIN/MANAGER/EMPLOYEE).
+- Crear CustomerGuard (redirige a /auth/login si no es CUSTOMER).
+- Redirigir a /store si el usuario ya esta autenticado y entra a /auth/login.
+- Mostrar errores: INVALID_CREDENTIALS, ACCOUNT_DISABLED.
+- Agregar ruta /auth/login con layout publico.
+- Agregar indicador visual de sesion (nombre de usuario en topbar, boton de logout).
+- Agregar tests unitarios de AuthService, AuthInterceptor y AuthGuard.
 
 ---
 
@@ -140,12 +193,24 @@ tags:
 - Las acciones criticas de usuario quedan preparadas para auditoria.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear UserAdminController bajo /api/admin/users.
 - Implementar CreateInternalUserRequest y UpdateUserRequest.
 - Validar regla branch_id segun rol.
 - Aplicar @PreAuthorize para restringir ABM completo a ADMIN.
-- Crear pantalla Angular de listado basico de usuarios internos.
 - Agregar tests de permisos y validacion branch_id.
+
+**Frontend:**
+- Crear modulo Angular admin/users con ruta /admin/users protegida por AdminGuard.
+- Crear UserListComponent con tabla paginada (columnas: nombre, apellido, email, rol, sucursal, enabled, acciones).
+- Crear UserFormComponent para alta y edicion de usuario interno.
+- Validaciones en formulario: email formato, password >= 8 caracteres, branch_id obligatorio si rol es MANAGER o EMPLOYEE.
+- Agregar selector de rol que muestre/oculte el campo branch_id segun corresponda.
+- Agregar modal de confirmacion antes de habilitar/deshabilitar un usuario.
+- Mostrar errores del backend: EMAIL_DUPLICATED, BRANCH_REQUIRED_FOR_ROLE.
+- Manejar estados: loading (skeleton en tabla), empty (sin usuarios encontrados), error al cargar/guardar.
+- Agregar tests unitarios de UserListComponent (listado, busqueda, paginacion) y UserFormComponent (creacion, edicion, validaciones).
 
 ---
 
@@ -162,12 +227,27 @@ tags:
 - No se permite eliminar una categoria usada sin manejo controlado.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear Category entity, repository, service y controller admin.
 - Implementar DTOs CategoryRequest y CategoryDto.
 - Implementar GET /api/store/categories.
 - Agregar validacion de nombre obligatorio y parent existente.
-- Crear componentes Angular de listado/formulario simple.
 - Agregar tests de creacion, edicion y parent invalido.
+
+**Frontend (admin):**
+- Crear CategoryListComponent con tabla paginada (columnas: nombre, categoria padre, descripcion, acciones).
+- Crear CategoryFormComponent con campo nombre obligatorio, descripcion opcional y selector de categoria padre (tree/select anidado).
+- Validar nombre obligatorio en tiempo real.
+- Mostrar errores del backend: NAME_REQUIRED, PARENT_NOT_FOUND.
+- Manejar estados: loading, empty (sin categorias), error.
+- Agregar confirmacion antes de eliminar (con advertencia si tiene productos asociados).
+- Agregar ruta /admin/categories dentro del layout admin.
+- Agregar tests unitarios de CategoryListComponent y CategoryFormComponent.
+
+**Frontend (publico):**
+- Crear CategoryNavComponent para mostrar categorias en la tienda (sidebar o dropdown).
+- Permitir seleccionar categoria para filtrar productos en el catalogo.
 
 ---
 
@@ -184,13 +264,23 @@ tags:
 - El producto guarda online_status para controlar visibilidad publica.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear Product entity, repository, service y admin controller.
 - Implementar endpoints GET/POST/PUT/DELETE /api/admin/products.
 - Crear ProductRequest, ProductSummaryDto y ProductDetailDto.
 - Validar barcode unico, sale_price >= 0 y categoryId valido.
-- Crear pantalla Angular admin de productos con tabla paginada.
-- Crear formulario de alta/edicion con validaciones frontend.
 - Agregar tests de producto duplicado, precio invalido y edicion.
+
+**Frontend:**
+- Crear ProductListComponent con tabla paginada y filtros (busqueda por nombre/barcode, filtro por categoria, filtro por estado online).
+- Crear ProductFormComponent con todos los campos: nombre, descripcion, marca, barcode, categoria (selector), precio de venta, stock minimo, imagen (upload con preview).
+- Validaciones frontend: nombre obligatorio, precio >= 0, barcode formato opcional, categoria requerida.
+- Implementar subida de imagen con preview (mostrar placeholder si no hay imagen).
+- Mostrar estado online como badge de color (DRAFT=gris, PUBLISHED=verde, PAUSED=amarillo, HIDDEN=rojo).
+- Manejar estados: loading (skeleton en tabla y formulario), empty (ningun producto), error al guardar/cargar.
+- Agregar ruta /admin/products con listado, /admin/products/new y /admin/products/:id/edit.
+- Agregar tests unitarios de ProductListComponent (filtros, paginacion) y ProductFormComponent (creacion, edicion, validaciones).
 
 ---
 
@@ -207,11 +297,19 @@ tags:
 - La UI muestra claramente el estado actual.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear OnlineStatus enum y transicion controlada en ProductService.
 - Implementar PATCH /api/admin/products/{id}/status.
 - Filtrar GET /api/store/products por PUBLISHED.
-- Agregar selector de estado en el ABM de productos.
 - Agregar tests para evitar estados invalidos y verificar filtro publico.
+
+**Frontend:**
+- Agregar en ProductListComponent un boton/cion por fila para cambiar estado (toggle menu con opciones disponibles segun estado actual).
+- Crear StatusBadgeComponent reutilizable que muestre el estado con color y texto.
+- Agregar modal de confirmacion al cambiar estado (ej: confirmar publicacion de producto, confirmar pausa, etc).
+- Actualizar el badge visual inmediatamente despues del cambio sin recargar la tabla.
+- Agregar tests unitarios del cambio de estado desde el frontend.
 
 ---
 
@@ -228,12 +326,25 @@ tags:
 - La pantalla publica permite buscar y filtrar sin login.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Implementar StoreProductController con listado y detalle.
 - Crear queries paginadas por nombre, categoria y estado publicado.
-- Crear componentes Angular: StoreLayout, ProductGrid, ProductCard, ProductDetail.
-- Implementar StoreProductService en Angular.
-- Agregar estados visuales de loading, empty y error.
 - Agregar tests de endpoint publico y filtro por published.
+
+**Frontend:**
+- Crear StoreLayoutComponent (header con logo + nav + icono carrito + login/logout, footer).
+- Crear StoreHomePageComponent con banner/bienvenida y productos destacados.
+- Crear ProductGridComponent con grilla responsive (2 columnas mobile, 4 desktop).
+- Crear ProductCardComponent con: imagen, nombre, precio, badge de stock, boton agregar al carrito.
+- Crear ProductDetailPageComponent con: imagen grande, descripcion, precio, stock disponible, selector de cantidad, boton agregar.
+- Crear StoreProductService con metodos getProducts(filters), getProduct(id), getCategories().
+- Agregar buscador por nombre con debounce (300ms) en la cabecera de la tienda.
+- Agregar filtro lateral de categorias con conteo de productos.
+- Manejar estados visuales en cada componente: loading (skeleton cards), empty (mensaje sin resultados con sugerencia), error (alerta con reintentar).
+- Agregar paginacion o infinite scroll en el listado de productos.
+- Agregar ruta /store (home), /store/products (listado con filtros), /store/products/:id (detalle).
+- Agregar tests unitarios de StoreProductService, ProductGridComponent, ProductCardComponent y ProductDetailPageComponent.
 
 ---
 
@@ -250,11 +361,23 @@ tags:
 - No se filtran stacktraces al cliente.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear ApiError record/clase.
 - Crear DomainException base con code y status.
 - Implementar @ControllerAdvice global.
 - Mapear MethodArgumentNotValidException a VALIDATION_ERROR.
-- Crear HttpErrorInterceptor en Angular.
+- Agregar tests de formato de error.
+
+**Frontend:**
+- Crear HttpErrorInterceptor que intercepte todas las respuestas HTTP con error.
+- Mapear codigos de error del backend a mensajes amigables en espaniol.
+- Crear ToastService para mostrar notificaciones de error/exito/info en esquina superior derecha.
+- Crear ToastComponent global (snackbar) con duracion configurable y boton de cerrar.
+- Manejar casos: 401 (redirigir a login), 403 (redirigir a home), 404 (mostrar no encontrado), 500 (mostrar error generico).
+- Integrar validacion de formularios con los errores VALIDATION_ERROR del backend (mostrar error en el campo correspondiente).
+- Crear ErrorPageComponent para rutas no encontradas (404) y errores de servidor (500).
+- Agregar tests unitarios de HttpErrorInterceptor y ToastService.
 - Agregar tests de formato de error.
 
 ---
@@ -272,12 +395,22 @@ tags:
 - La demo inicial permite login y navegacion basica del catalogo.
 
 **Subtareas sugeridas:**
+
+**Backend / Testing:**
 - Configurar JUnit, Mockito y Testcontainers PostgreSQL.
 - Crear clase base para integration tests.
 - Agregar script de seed demo con 15-20 productos representativos.
 - Crear usuario admin, empleado y customer demo.
-- Agregar npm scripts de lint/test/build en frontend.
 - Documentar credenciales demo no productivas.
+
+**Frontend:**
+- Configurar Jasmine y Karma para tests unitarios (o Jest si se prefiere).
+- Crear test de ejemplo para un componente, un servicio y un guard.
+- Agregar npm scripts: npm run test (unitarios), npm run test:watch, npm run lint, npm run build.
+- Agregar datos de prueba (fixtures/mocks) para productos, categorias y usuario.
+- Verificar que npm run build pase sin errores.
+- Documentar comandos de testing frontend en README.
+- Configurar proxy para que el frontend en desarrollo consuma la API con datos demo.
 
 ---
 
@@ -301,12 +434,17 @@ tags:
 - No existe branch_product_stock ni stock_reservations.
 
 **Subtareas sugeridas:**
+
+**Backend / DB:**
 - Crear V4__inventory.sql con stock_lots y stock_movements.
 - Crear StockLot, StockMovement y enums de movimientos.
 - Crear indices por product_id, branch_id y expiration_date.
 - Implementar StockLotRepository con consultas de disponibilidad.
 - Implementar endpoint GET /api/admin/stock/lots.
 - Agregar tests de calculo de stock disponible.
+
+**Frontend:**
+- No requiere subtareas frontend directas (es puramente modelo de datos).
 
 ---
 
@@ -323,12 +461,21 @@ tags:
 - La UI permite cargar vencimiento opcional.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear CreateStockLotRequest y StockLotDto.
 - Implementar InventoryService.createStockLot().
 - Registrar movimiento PURCHASE_ENTRY asociado al lote.
-- Crear pantalla Angular de ingreso de stock.
-- Mostrar stock total actual luego de cargar el lote.
 - Agregar tests de ingreso valido e invalido.
+
+**Frontend:**
+- Crear StockEntryPageComponent con formulario de carga de lote (producto selector, sucursal, cantidad, codigo de lote, vencimiento datepicker, costo opcional).
+- Crear buscador/selector de producto por nombre o barcode.
+- Validar cantidad > 0, vencimiento futuro (si se informa).
+- Mostrar stock total actual del producto en la sucursal despues de cargar.
+- Manejar estados: loading, error (producto no encontrado, cantidad invalida), exito con resumen.
+- Agregar ruta /admin/stock/entry dentro del layout admin.
+- Agregar tests unitarios del formulario y la validacion.
 
 ---
 
@@ -345,11 +492,16 @@ tags:
 - La logica pura puede probarse sin levantar Spring.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear FefoStockDeductionPolicy.
 - Definir estructura DeductionPlan con lotId y quantityToDeduct.
 - Implementar calculo sobre lista de lotes disponibles.
 - Cubrir casos: un lote, varios lotes, lote sin vencimiento, stock insuficiente y cantidad decimal.
 - Documentar criterio FEFO dentro del modulo inventory.
+
+**Frontend:**
+- No requiere subtareas frontend directas (es logica de dominio pura).
 
 ---
 
@@ -366,12 +518,23 @@ tags:
 - EMPLOYEE puede consultar stock pero no realizar ajustes.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear StockAdjustmentRequest.
 - Implementar validacion de motivo obligatorio.
 - Implementar ajuste sobre lote especifico o producto/sucursal con FEFO para negativos.
 - Registrar StockMovement con created_by_user_id.
 - Crear listado de movimientos filtrable.
 - Agregar tests de ajuste negativo sin stock y reason vacio.
+
+**Frontend:**
+- Crear StockAdjustmentPageComponent con formulario de ajuste (producto, sucursal, tipo MANUAL_ADJUSTMENT / INTERNAL_CONSUMPTION, cantidad positiva o negativa, motivo obligatorio).
+- Mostrar stock actual del producto antes del ajuste.
+- Validar motivo no vacio, cantidad distinta de cero.
+- Crear StockMovementListComponent con tabla paginada y filtros (tipo de movimiento, producto, fecha).
+- Mostrar badge de color por tipo de movimiento.
+- Agregar ruta /admin/stock/adjustments y /admin/stock/movements.
+- Agregar tests unitarios de formulario y listado.
 
 ---
 
@@ -388,11 +551,20 @@ tags:
 - El backend no expone costos ni datos internos.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Extender ProductSummaryDto y ProductDetailDto con availableStock.
 - Optimizar consulta de disponibilidad para listado paginado.
-- Actualizar ProductCard y ProductDetail con stock visible.
 - Validar branchId requerido o usar sucursal default del MVP.
 - Agregar tests de producto publicado sin stock.
+
+**Frontend:**
+- Agregar indicador visual de stock en ProductCardComponent (badge verde si hay stock, rojo si agotado, gris si es bajo).
+- Agregar detalle de stock disponible en ProductDetailPageComponent.
+- Deshabilitar boton de agregar al carrito si stock = 0, mostrar mensaje de producto agotado.
+- Agregar selector de sucursal (si aplica) o usar sucursal default configurada.
+- Actualizar visualizacion de stock en tiempo real al cambiar de sucursal.
+- Agregar tests de visualizacion de stock en ProductCardComponent.
 
 ---
 
@@ -409,12 +581,17 @@ tags:
 - fulfillment_type queda en PICKUP para el MVP.
 
 **Subtareas sugeridas:**
+
+**Backend / DB:**
 - Crear V5__orders.sql con orders y order_items.
 - Crear entidades Order y OrderItem.
 - Crear enums OrderType, OrderStatus y FulfillmentType.
 - Implementar OrderNumberGenerator.
 - Crear repositorios y DTOs OrderSummaryDto/OrderDetailDto.
 - Agregar constraints y tests de reglas ONLINE/POS.
+
+**Frontend:**
+- No requiere subtareas frontend directas (es puramente modelo de datos).
 
 ---
 
@@ -431,12 +608,17 @@ tags:
 - No se almacena informacion sensible de tarjetas.
 
 **Subtareas sugeridas:**
+
+**Backend / DB:**
 - Crear V6__payments.sql.
 - Crear Payment entity y enums PaymentProvider, PaymentMethod, PaymentStatus.
 - Crear PaymentRepository y PaymentService base.
 - Agregar relacion Order -> Payments.
 - Implementar consulta de payments por order.
 - Agregar tests de constraints de metodo, proveedor y monto.
+
+**Frontend:**
+- No requiere subtareas frontend directas (es puramente modelo de datos).
 
 ---
 
@@ -454,6 +636,8 @@ tags:
 - No descuenta stock en esta etapa.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear CustomerOrderController.
 - Implementar CreateOnlineOrderRequest con items productId/quantity.
 - Validar productos activos y publicados.
@@ -461,6 +645,9 @@ tags:
 - Crear snapshots de cliente y producto en la orden.
 - Calcular subtotal, descuentos en 0 y total.
 - Agregar tests de stock insuficiente, producto inexistente y orden exitosa.
+
+**Frontend:**
+- El frontend de creacion de orden se cubre en S2-US10 (CheckoutPage).
 
 ---
 
@@ -477,12 +664,18 @@ tags:
 - El carrito no queda asociado a usuario en base de datos.
 
 **Subtareas sugeridas:**
-- Crear CartService con Angular Signals.
-- Crear modelo CartItem con productId, name, price, imageUrl y quantity.
-- Crear componentes CartDrawer/CartPage.
-- Persistir y recuperar carrito desde localStorage.
+
+**Frontend:**
+- Crear CartService con Angular Signals para estado reactivo del carrito.
+- Crear modelo CartItem con productId, name, price, imageUrl, quantity y availableStock.
+- Persistir y recuperar carrito desde localStorage (serializar/deserializar).
+- Implementar metodos: addItem(), removeItem(), updateQuantity(), clearCart(), getTotal(), getItemCount().
 - Validar cantidad mayor a cero y no superior al disponible conocido.
-- Agregar tests unitarios del servicio de carrito.
+- Crear CartDrawerComponent (sidebar deslizable desde la derecha) con lista de items, subtotal y boton de ir al checkout.
+- Crear CartPageComponent (pagina completa de carrito) con tabla de items, modificar cantidades, eliminar, subtotal, boton de checkout.
+- Agregar icono de carrito en el header de la tienda con badge de cantidad de items.
+- Sincronizar el badge del carrito en el header cuando se agrega/quita un item.
+- Agregar tests unitarios de CartService (agregar, quitar, persistencia, total) y CartDrawerComponent.
 
 ---
 
@@ -499,12 +692,19 @@ tags:
 - El carrito no se vacia hasta que el pago sea iniciado/confirmado.
 
 **Subtareas sugeridas:**
-- Crear CheckoutPage protegida por AuthGuard CUSTOMER.
-- Integrar CartService con CustomerOrderService.
-- Mostrar resumen de compra, cantidades y total.
-- Manejar errores INSUFFICIENT_STOCK y PRODUCT_NOT_FOUND.
-- Crear pantalla de orden creada pendiente de pago.
-- Agregar tests de componente/servicio para confirmacion.
+
+**Frontend:**
+- Crear CheckoutPageComponent protegida por AuthGuard CUSTOMER.
+- Crear CustomerOrderService con metodo createOrder(items).
+- Mostrar resumen de compra: lista de items con foto, cantidad, precio unitario, subtotal por item, total general.
+- Mostrar datos del cliente (email, nombre) desde el token JWT.
+- Manejar error INSUFFICIENT_STOCK (mostrar cuales productos no tienen stock suficiente).
+- Manejar error PRODUCT_NOT_FOUND / PRODUCT_NOT_PUBLISHED.
+- Al crear la orden exitosamente, mostrar pantalla de confirmacion con numero de orden, estado PENDING_PAYMENT y resumen.
+- NO vaciar el carrito automaticamente (esperar a que el usuario inicie pago en S3).
+- Agregar boton de continuar comprando que redirija a la tienda.
+- Agregar ruta /customer/checkout dentro del layout de tienda.
+- Agregar tests unitarios de CheckoutPageComponent y CustomerOrderService.
 
 ---
 
@@ -521,12 +721,24 @@ tags:
 - La importacion automatica queda fuera del MVP.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear V3__suppliers.sql con suppliers y supplier_products.
 - Crear entidades Supplier y SupplierProduct.
 - Implementar endpoints /api/admin/suppliers.
 - Implementar endpoints /api/admin/supplier-products.
-- Crear pantallas Angular de proveedores y asociacion con producto.
 - Agregar tests de CUIT duplicado, costo negativo y asociacion.
+
+**Frontend:**
+- Crear SupplierListComponent con tabla paginada (columnas: nombre, contacto, telefono, email, CUIT, acciones).
+- Crear SupplierFormComponent para alta/edicion de proveedor.
+- Validar CUIT formato, email formato, nombre obligatorio.
+- Crear SupplierProductListComponent para ver productos asociados a un proveedor.
+- Crear SupplierProductFormComponent para asociar producto a proveedor con costo actual y SKU del proveedor.
+- Agregar buscador de producto para la asociacion.
+- Manejar estados: loading, empty (sin proveedores), error.
+- Agregar rutas /admin/suppliers y /admin/suppliers/:id/products.
+- Agregar tests unitarios de componentes de proveedores.
 
 ---
 
@@ -543,11 +755,20 @@ tags:
 - La UI muestra historial de pedidos del cliente.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Implementar endpoints de listado y detalle customer.
 - Agregar validacion de ownership por customer_user_id.
-- Crear CustomerOrdersPage y CustomerOrderDetailPage.
-- Mostrar estados PENDING_PAYMENT, PAID, PREPARING, READY, DELIVERED, CANCELLED, PAYMENT_FAILED y STOCK_CONFLICT.
 - Agregar tests de acceso prohibido a pedido ajeno.
+
+**Frontend:**
+- Crear CustomerOrdersPageComponent con lista de pedidos del cliente (tabla: numero de orden, fecha, total, estado, acciones).
+- Crear CustomerOrderDetailPageComponent con detalle completo: items (foto, nombre, cantidad, precio), total, estado actual, estado del pago, timeline de estados con fechas.
+- Mostrar cada estado con badge de color y texto descriptivo.
+- Agregar boton de ir al pago si el pedido esta PENDING_PAYMENT (prepara para S3-US05).
+- Manejar estados: loading, empty (ningun pedido aun), error.
+- Agregar ruta /customer/orders y /customer/orders/:id.
+- Agregar tests unitarios de CustomerOrdersPageComponent y CustomerOrderDetailPageComponent.
 
 ---
 
@@ -571,12 +792,17 @@ tags:
 - Las credenciales se leen desde variables de entorno.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear interfaz PaymentGateway.
 - Crear DTO interno PaymentPreferenceResult con initPoint y preferenceId.
 - Crear MercadoPagoGateway con configuracion externa.
 - Crear FakePaymentGateway para tests/dev.
 - Agregar properties MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET, MP_SUCCESS_URL, MP_FAILURE_URL.
 - Documentar como usar sandbox/mock.
+
+**Frontend:**
+- No requiere subtareas frontend directas (es infraestructura backend).
 
 ---
 
@@ -593,12 +819,17 @@ tags:
 - Devuelve initPoint y preferenceId.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear MercadoPagoService.createCheckoutPreference().
 - Validar estado de orden PENDING_PAYMENT.
 - Validar ownership CUSTOMER.
 - Guardar provider_preference_id y external_reference en payment.
 - Mapear datos de order/items al request de MP.
 - Agregar tests de preferencia nueva, preferencia existente y orden invalida.
+
+**Frontend:**
+- El frontend de pago se cubre en S3-US05 (integracion checkout MP).
 
 ---
 
@@ -615,6 +846,8 @@ tags:
 - REJECTED actualiza payment y order a PAYMENT_FAILED.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear endpoint publico MercadoPagoWebhookController.
 - Implementar verificacion de firma en gateway.
 - Implementar busqueda por provider_payment_id/provider_preference_id/external_reference.
@@ -622,6 +855,9 @@ tags:
 - Mapear estados MP a PaymentStatus interno.
 - Registrar metadata JSONB del webhook sin datos sensibles.
 - Agregar integration tests de webhook duplicado y rechazado.
+
+**Frontend:**
+- No requiere subtareas frontend directas (es procesamiento asincronico server-side).
 
 ---
 
@@ -639,6 +875,8 @@ tags:
 - Si no hay stock suficiente, la order pasa a STOCK_CONFLICT y no queda stock negativo.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Implementar InventoryService.deductForOnlineOrder() transaccional.
 - Crear consulta repository con bloqueo pesimista ordenada por vencimiento.
 - Registrar StockMovement por lote afectado.
@@ -646,6 +884,9 @@ tags:
 - Implementar manejo STOCK_CONFLICT.
 - Agregar tests concurrentes basicos de no sobreventa.
 - Agregar tests de descuento de varios lotes.
+
+**Frontend:**
+- No requiere subtareas frontend directas (es logica de backend transaccional).
 
 ---
 
@@ -662,12 +903,19 @@ tags:
 - No se muestra informacion interna de pagos.
 
 **Subtareas sugeridas:**
-- Crear CustomerCheckoutService.
-- Agregar boton Pagar con Mercado Pago en orden pendiente.
-- Implementar window.location.href hacia initPoint.
-- Crear PaymentResultPage para success/failure/pending.
-- Consultar GET /api/customer/orders/{id} al volver.
-- Manejar estado asincronico donde el webhook aun no impacto.
+
+**Frontend:**
+- Crear CustomerCheckoutService con metodo requestCheckout(orderId) que llame a POST /api/customer/orders/{id}/checkout/mp.
+- Agregar boton de Pagar con Mercado Pago en la pantalla de detalle de orden (CustomerOrderDetailPage) cuando la orden esta PENDING_PAYMENT.
+- Al hacer clic, llamar al endpoint y redirigir al navegador a initPoint con window.location.href.
+- Crear PaymentCallbackPageComponent para manejar el retorno desde MP (success, failure, pending).
+- En PaymentCallbackPage, consultar GET /api/customer/orders/{id} para obtener el estado actualizado.
+- Manejar estado asincronico: si el webhook aun no impacto, mostrar mensaje de pago pendiente con instrucciones.
+- Mostrar pantalla de exito cuando order.status = PAID (con resumen y numero de orden).
+- Mostrar pantalla de rechazo cuando order.status = PAYMENT_FAILED (con posibilidad de reintentar).
+- Mostrar pantalla de STOCK_CONFLICT con mensaje de contacto al local.
+- Agregar ruta /customer/payment/callback con query params orderId.
+- Agregar tests unitarios de CustomerCheckoutService y PaymentCallbackPageComponent.
 
 ---
 
@@ -684,13 +932,23 @@ tags:
 - GET /api/admin/cash-sessions/current devuelve la caja abierta actual.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear V7__cash.sql con cash_sessions y cash_movements.
 - Crear CashSession entity, repository y status enum.
 - Implementar CashService.openCashSession().
 - Validar una caja abierta por sucursal.
 - Crear endpoints open/current.
-- Crear UI de apertura de caja.
 - Agregar tests de caja duplicada y apertura por empleado.
+
+**Frontend:**
+- Crear CashOpenPageComponent con formulario de apertura (monto inicial obligatorio, notas opcional, sucursal del usuario).
+- Mostrar indicador visual en el sidebar del admin cuando hay una caja abierta.
+- Si ya hay una caja abierta, mostrar mensaje y redirigir a la caja actual.
+- Redirigir al detalle de caja actual despues de abrir.
+- Manejar errores: CASH_SESSION_ALREADY_OPEN.
+- Agregar ruta /admin/cash/open.
+- Agregar tests unitarios del formulario de apertura.
 
 ---
 
@@ -707,12 +965,21 @@ tags:
 - El movimiento queda asociado al usuario que lo creo.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear CashMovement entity y enums.
 - Implementar POST /api/admin/cash-sessions/{id}/movements.
 - Validar reason obligatorio y amount distinto de cero.
 - Actualizar detalle de caja con movimientos manuales.
-- Crear formulario Angular de movimiento manual.
 - Agregar tests de caja cerrada, reason vacio y usuario creador.
+
+**Frontend:**
+- Crear CashMovementFormComponent con formulario (tipo: CASH_IN / CASH_OUT / ADJUSTMENT, metodo: CASH / TRANSFER / OTHER, monto, motivo obligatorio).
+- Mostrar el formulario en la pagina de detalle de caja actual.
+- Validar monto distinto de cero, motivo no vacio.
+- Deshabilitar formulario si la caja esta CLOSED.
+- Agregar tabla de movimientos de la caja actual con badge de color por tipo.
+- Agregar tests unitarios del formulario y validaciones.
 
 ---
 
@@ -729,12 +996,23 @@ tags:
 - La diferencia no bloquea el cierre si esta justificada.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear CashCloseCalculator.
 - Implementar POST /api/admin/cash-sessions/{id}/close.
 - Calcular totalsByMethod desde payments asociados a la caja.
 - Persistir counted, expected, difference, reason, closed_by_user_id y closed_at.
-- Crear UI de cierre con resumen de metodos y campo de efectivo contado.
 - Agregar tests de cierre sin diferencia, con diferencia sin razon y con diferencia justificada.
+
+**Frontend:**
+- Crear CashClosePageComponent con resumen de cierre: apertura, totales por metodo de pago (CASH, QR, TRANSFER, DEBIT_CARD, CREDIT_CARD), total de movimientos manuales, expected cash amount.
+- Agregar campo de efectivo contado (countedCashAmount) que el empleado ingresa.
+- Calcular y mostrar automaticamente la diferencia (expected - counted).
+- Si la diferencia es distinta de cero, mostrar campo obligatorio de motivo de diferencia.
+- Confirmar cierre con modal de confirmacion mostrando el resumen completo.
+- Despues del cierre, mostrar pantalla de resumen final con todos los datos.
+- Agregar ruta /admin/cash/close/:sessionId.
+- Agregar tests unitarios del componente de cierre (calculo de diferencia, validacion de motivo).
 
 ---
 
@@ -751,12 +1029,21 @@ tags:
 - No se pueden agregar productos sin stock.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear endpoint especifico o reutilizar catalogo admin con filtro q/barcode.
 - Optimizar indice de barcode.
-- Crear POSProductSearchComponent.
-- Agregar input enfocado para scanner.
-- Mostrar stock disponible y precio.
 - Agregar tests de busqueda por barcode.
+
+**Frontend:**
+- Crear POSProductSearchComponent con input de busqueda que filtre en tiempo real (nombre y barcode).
+- Enfocar input automaticamente al cargar, ideal para lector de codigo de barras como entrada de teclado.
+- Mostrar resultados como cards compactas con: nombre, precio, stock disponible, barcode.
+- Detectar si el input es un barcode (solo numeros) o nombre para optimizar busqueda.
+- Agregar indicador visual de producto sin stock (deshabilitado).
+- Al seleccionar un producto, agregarlo al carrito POS y limpiar el input de busqueda para el siguiente producto.
+- Soporte para lectura continua de codigos de barras (enter rapido).
+- Agregar tests unitarios del componente de busqueda.
 
 ---
 
@@ -774,6 +1061,8 @@ tags:
 - Si no hay stock o caja abierta, no se crea venta parcial.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Implementar PosSaleService.createSale() con @Transactional.
 - Validar caja OPEN de la sucursal del usuario.
 - Bloquear lotes con FOR UPDATE y aplicar FEFO.
@@ -782,6 +1071,9 @@ tags:
 - Crear snapshots de items.
 - Registrar movimientos POS_SALE por lote.
 - Agregar integration tests de venta cash, QR, stock insuficiente y sin caja.
+
+**Frontend:**
+- El frontend de venta POS se cubre en S3-US11 (pantalla POS completa).
 
 ---
 
@@ -798,13 +1090,20 @@ tags:
 - Muestra comprobante/resumen simple al finalizar.
 
 **Subtareas sugeridas:**
-- Crear AdminPosPage.
-- Integrar POSProductSearchComponent con carrito POS en memoria.
-- Implementar selector de metodo de pago.
-- Mostrar total y validaciones de stock/cantidad.
-- Consumir POST /api/admin/pos/sales.
-- Mostrar resultado con numero de orden y metodo de pago.
-- Agregar manejo de errores CASH_SESSION_REQUIRED e INSUFFICIENT_STOCK.
+
+**Frontend:**
+- Crear AdminPosPageComponent como pantalla completa de venta presencial.
+- Dividir en dos paneles: izquierdo (busqueda + resultados) y derecho (carrito POS).
+- Integrar POSProductSearchComponent en el panel izquierdo.
+- Crear POSCartComponent en el panel derecho con: tabla de items agregados (nombre, cantidad, precio, subtotal, boton quitar), modificador de cantidad, total general.
+- Implementar selector de metodo de pago (CASH, QR, TRANSFER, DEBIT_CARD, CREDIT_CARD) con iconos.
+- Validar que haya caja abierta antes de permitir cobrar (mostrar error si no).
+- Al presionar cobrar, consumir POST /api/admin/pos/sales.
+- Mostrar resultado: resumen de venta con numero de orden y metodo de pago.
+- Manejar errores: CASH_SESSION_REQUIRED, INSUFFICIENT_STOCK.
+- Agregar boton de nueva venta que limpie el carrito POS.
+- Detectar tecla F8 o similar para cobrar rapido.
+- Agregar tests unitarios del AdminPosPageComponent y POSCartComponent.
 
 ---
 
@@ -821,12 +1120,18 @@ tags:
 - Las pruebas corren en el pipeline local documentado.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear fixtures de productos, lotes, usuarios y caja.
 - Testear webhook aprobado con descuento FEFO.
 - Testear webhook duplicado sin doble descuento.
 - Testear POS con caja abierta y sin caja.
 - Testear cierre de caja con diferencia y razon obligatoria.
 - Agregar comando unico backend test.
+
+**Frontend:**
+- Agregar tests de integracion del flujo completo de checkout + MP mock.
+- Verificar que los componentes POS, caja y checkout manejen correctamente los estados de error del backend.
 
 ---
 
@@ -850,12 +1155,21 @@ tags:
 - Se registran timestamps prepared_at y delivered_at.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Implementar PATCH /api/admin/orders/{id}/prepare.
 - Implementar PATCH /api/admin/orders/{id}/ready.
 - Implementar PATCH /api/admin/orders/{id}/delivered.
 - Validar transiciones con OrderStatePolicy.
-- Crear UI admin de cambio de estado.
 - Agregar tests de transiciones validas e invalidas.
+
+**Frontend:**
+- Agregar botones de accion por estado en AdminOrderDetailPage (preparar, listo, entregado) que aparecen segun el estado actual.
+- Deshabilitar botones que no correspondan segun la maquina de estados.
+- Agregar modal de confirmacion antes de cada transicion de estado.
+- Actualizar el estado visualmente sin recargar la pagina despues de la accion.
+- Mostrar timeline de estados con timestamps en el detalle de la orden.
+- Agregar tests unitarios de los botones de transicion y la logica de visibilidad.
 
 ---
 
@@ -872,6 +1186,8 @@ tags:
 - No se puede cancelar una orden DELIVERED.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Implementar OrderCancellationService transaccional.
 - Buscar stock_movements originales por order_id.
 - Restaurar quantity_available en los mismos stock_lot_id.
@@ -879,6 +1195,14 @@ tags:
 - Actualizar status CANCELLED y cancellation_reason.
 - Actualizar payment CANCELLED o REFUNDED segun escenario.
 - Agregar tests de cancelacion PAID, PREPARING, READY y estado invalido.
+
+**Frontend:**
+- Agregar boton de Cancelar orden en AdminOrderDetailPage (visible solo para estados cancelables).
+- Crear modal de cancelacion con campo de motivo obligatorio.
+- Validar motivo no vacio antes de enviar.
+- Mostrar confirmacion con resumen de la orden antes de cancelar.
+- Actualizar estado visualmente despues de la cancelacion.
+- Agregar tests unitarios del modal de cancelacion.
 
 ---
 
@@ -895,12 +1219,19 @@ tags:
 - La UI permite acceder a acciones permitidas segun estado.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Implementar filtros de OrderRepository.
-- Crear AdminOrdersPage con tabla paginada.
-- Crear AdminOrderDetailPage.
-- Mostrar pagos asociados y estado actual.
-- Mostrar acciones prepare/ready/delivered/cancel segun estado.
 - Agregar tests de filtros y permisos por rol/sucursal.
+
+**Frontend:**
+- Crear AdminOrdersPageComponent con tabla paginada y filtros (estado, tipo ONLINE/POS, rango de fechas, busqueda por numero de orden).
+- Crear AdminOrderDetailPageComponent con: datos del cliente (snapshot), items con foto, pagos asociados, total, estado actual, timeline de estados.
+- Mostrar acciones disponibles segun estado: preparar, listo para retirar, entregado, cancelar.
+- Filtrar ordenes por sucursal del usuario logueado (MANAGER/EMPLOYEE ven solo su sucursal, ADMIN ve todas).
+- Manejar estados: loading, empty (sin ordenes con esos filtros), error.
+- Agregar ruta /admin/orders y /admin/orders/:id.
+- Agregar tests unitarios de AdminOrdersPageComponent (filtros, paginacion, permisos por sucursal).
 
 ---
 
@@ -917,12 +1248,25 @@ tags:
 - La UI muestra tarjetas claras y tabla de productos top.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear ReportService.dashboard().
 - Crear queries agregadas para ventas por tipo y dia.
 - Crear query de productos mas vendidos.
 - Crear query de pedidos pendientes.
-- Crear DashboardPage Angular con cards y tabla.
 - Agregar tests de agregacion por sucursal y rol.
+
+**Frontend:**
+- Crear AdminDashboardPageComponent como pagina principal del backoffice.
+- Crear DashboardCardComponent reutilizable (icono, titulo, valor, color, link opcional).
+- Mostrar cards de: ventas del dia (online + POS), ordenes pendientes, productos con stock bajo, lotes por vencer.
+- Crear tabla de productos top (mas vendidos del dia/semana) con posicion, nombre, cantidad, imagen pequena.
+- Filtrar datos segun el rol (si es MANAGER/EMPLOYEE, solo su sucursal).
+- Agregar skeleton loading mientras cargan las cards.
+- Mostrar estado empty si no hay datos del dia.
+- Actualizar periodicamente o con boton de refrescar.
+- Agregar ruta /admin/dashboard como pagina de inicio del admin layout.
+- Agregar tests unitarios de AdminDashboardPageComponent y DashboardCardComponent.
 
 ---
 
@@ -938,12 +1282,19 @@ tags:
 - La UI permite consultar historial y detalle de cierres.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Implementar CashReportDto.
 - Crear query de totalsByMethod desde payments.
-- Crear pantalla CashSessionHistoryPage.
-- Crear pantalla CashSessionDetailReportPage.
-- Mostrar apertura, cierre, operador y movimientos manuales.
 - Agregar tests de totales por CASH/QR/TRANSFER/TARJETAS.
+
+**Frontend:**
+- Crear CashSessionHistoryPageComponent con lista de cierres anteriores (tabla: fecha apertura, fecha cierre, operador, expected, counted, diferencia, estado).
+- Crear CashSessionDetailReportPageComponent con detalle completo de un cierre: datos de apertura, totales por metodo de pago, movimientos manuales, expected cash amount, counted, diferencia y motivo.
+- Mostrar la diferencia con color verde (0 o positiva) o rojo (negativa), y el motivo si existe.
+- Manejar estados: loading, empty (sin cierres), error.
+- Agregar rutas /admin/cash/history y /admin/cash/history/:sessionId.
+- Agregar tests unitarios de ambos componentes.
 
 ---
 
@@ -960,13 +1311,22 @@ tags:
 - Cada recomendacion incluye mensaje y urgencia.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear RecommendationService rule-based.
 - Implementar regla LOW_STOCK usando products.minimum_stock y stock disponible.
 - Implementar regla EXPIRING_SOON con lotes proximos a vencer.
 - Implementar regla HIGH_ROTATION con order_items recientes.
 - Implementar regla NO_MOVEMENT con productos sin ventas recientes.
-- Crear panel Angular de recomendaciones.
 - Agregar tests de cada regla con datos controlados.
+
+**Frontend:**
+- Crear RecommendationsPanelComponent con lista de recomendaciones agrupadas por tipo.
+- Mostrar cada recomendacion con: icono segun tipo, titulo, descripcion, urgencia (alta/media/baja con color), link a la accion correspondiente.
+- Agregar reglas de visualizacion: ocultar panel si no hay recomendaciones.
+- Integrar en el dashboard principal (AdminDashboardPage) como seccion secundaria.
+- Agregar ruta /admin/recommendations para ver todas.
+- Agregar tests unitarios del panel de recomendaciones.
 
 ---
 
@@ -983,6 +1343,8 @@ tags:
 - Existe consulta administrativa basica de auditoria.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Crear V9__audit.sql y AuditLog entity.
 - Crear AuditService.record().
 - Integrar auditoria en ProductService para cambios de precio.
@@ -991,6 +1353,14 @@ tags:
 - Integrar auditoria en Payment/Webhook para confirmaciones.
 - Crear endpoint GET /api/admin/audit-logs con filtros basicos.
 - Agregar tests de generacion de audit logs.
+
+**Frontend:**
+- Crear AuditLogListPageComponent con tabla paginada de logs (fecha, usuario, accion, entidad, descripcion).
+- Agregar filtros: por entidad, por usuario, rango de fechas.
+- Mostrar detalle expandible de cada log.
+- Manejar estados: loading, empty (sin logs), error.
+- Agregar ruta /admin/audit accessible solo por ADMIN.
+- Agregar tests unitarios del listado de auditoria.
 
 ---
 
@@ -1007,12 +1377,20 @@ tags:
 - Angular oculta menus segun rol ademas de validar en backend.
 
 **Subtareas sugeridas:**
+
+**Backend:**
 - Revisar @PreAuthorize en todos los controllers.
 - Crear util de seguridad para branch scope.
-- Completar AdminGuard y CustomerGuard en Angular.
-- Implementar menu dinamico por rol.
-- Agregar tests de acceso prohibido por rol.
 - Validar que los endpoints customer no expongan pedidos ajenos.
+- Agregar tests de acceso prohibido por rol.
+
+**Frontend:**
+- Completar AdminGuard (redirige a /store si el rol no es ADMIN/MANAGER/EMPLOYEE).
+- Completar CustomerGuard (redirige a /auth/login si el rol no es CUSTOMER).
+- Implementar menu dinamico en AdminLayout segun rol: ADMIN ve todo, MANAGER no ve auditoria ni ABM de usuarios, EMPLOYEE solo ve POS, caja y pedidos.
+- Ocultar rutas completas en el sidebar segun rol (no solo deshabilitar).
+- Redirigir a dashboard si el usuario entra a una ruta no permitida.
+- Agregar tests de guard y visibilidad de menu por rol.
 
 ---
 
@@ -1029,12 +1407,17 @@ tags:
 - Los formularios muestran validaciones claras.
 
 **Subtareas sugeridas:**
-- Revisar layout publico de tienda en mobile.
-- Revisar layout backoffice y navegacion lateral/topbar.
-- Agregar estados empty/loading/error consistentes.
-- Optimizar formularios de stock, caja y POS.
-- Agregar confirmaciones para acciones destructivas.
-- Corregir problemas de accesibilidad basicos.
+
+**Frontend:**
+- Revisar layout publico de tienda en mobile (StoreLayout: menu hamburguesa, grilla de 2 columnas, carrito drawer a pantalla completa).
+- Revisar layout backoffice (AdminLayout: sidebar colapsable en mobile, topbar compacta).
+- Agregar estados empty/loading/error consistentes en todas las pantallas (usar componentes compartidos EmptyStateComponent, LoadingSkeletonComponent, ErrorAlertComponent).
+- Optimizar formularios de stock, caja y POS para uso tactil.
+- Agregar confirmaciones para acciones destructivas (cancelar orden, eliminar producto, cerrar caja con diferencia).
+- Agregar atajos de teclado basicos en POS (F8 para cobrar, Escape para limpiar busqueda).
+- Revisar contraste de colores y tamanios de fuente minimos.
+- Probar en resoluciones: 1366x768 (notebook), 1920x1080 (escritorio), 375x667 (mobile), 768x1024 (tablet).
+- Corregir problemas de accesibilidad: labels en formularios, roles ARIA en componentes interactivos, foco visible.
 
 ---
 
@@ -1051,12 +1434,15 @@ tags:
 - Los resultados quedan documentados para defensa/demo.
 
 **Subtareas sugeridas:**
-- Definir herramienta E2E o scripts de prueba manual reproducibles.
-- Crear dataset estable de demo.
-- Probar flujo customer: registro, catalogo, carrito, orden, checkout mock, pedido.
-- Probar flujo empleado: abrir caja, vender POS, cerrar caja.
-- Probar flujo admin: stock, cancelacion, reportes y recomendaciones.
+
+**Frontend / QA:**
+- Definir herramienta E2E: configurar Playwright o Cypress en el proyecto frontend.
+- Crear dataset estable de demo con productos, stock y usuarios conocidos.
+- Crear test E2E del flujo customer: registro en /auth/register, navegar catalogo en /store, buscar producto, agregar al carrito, ir al checkout, confirmar orden.
+- Crear test E2E del flujo empleado: login como EMPLOYEE, abrir caja, buscar producto en POS, vender con metodo CASH, cerrar caja.
+- Crear test E2E del flujo admin: login como ADMIN, ver dashboard, navegar a productos, crear producto, ver ordenes, cancelar orden.
 - Documentar bugs encontrados y correcciones aplicadas.
+- Agregar script npm run e2e para ejecutar todos los tests.
 
 ---
 
@@ -1073,13 +1459,19 @@ tags:
 - La demo permite ejecutar los flujos principales con usuarios seed.
 
 **Subtareas sugeridas:**
-- Crear Dockerfile backend.
-- Crear build de frontend y configuracion de servidor estatico/proxy.
+
+**Backend / Infra:**
+- Crear Dockerfile backend con build multi-stage.
 - Configurar CORS para ambiente demo.
 - Configurar variables de Mercado Pago sandbox/mock.
 - Crear script de migracion/seed para demo.
 - Documentar pasos de despliegue y rollback simple.
-- Validar demo desde navegador limpio.
+
+**Frontend:**
+- Configurar build de produccion con optimizaciones (--prod, --aot, --optimization).
+- Configurar servidor estatico (Nginx) para servir el frontend build.
+- Configurar proxy reverso en Nginx para redirigir /api/ al backend.
+- Validar demo desde navegador limpio (incognito, sin cache).
 
 ---
 
@@ -1096,11 +1488,13 @@ tags:
 - El tablero Jira tiene epicas, historias y tareas actualizadas con estados reales.
 
 **Subtareas sugeridas:**
+
+**Documentacion:**
 - Actualizar README funcional y tecnico.
 - Actualizar documentacion de endpoints implementados.
 - Agregar diagrama simple de arquitectura final.
 - Preparar guion de demo: customer, empleado, admin.
-- Adjuntar capturas de catalogo, checkout, caja, POS, reportes y recomendaciones.
+- Adjuntar capturas de: catalogo publico, detalle de producto, carrito, checkout, pago (mock), pantalla de orden creada, listado de pedidos del cliente, POS con productos agregados, apertura de caja, cierre de caja con resumen, dashboard, panel de recomendaciones, ABM de productos, listado de ordenes admin, y auditoria.
 - Revisar que Jira tenga dependencias, story points y criterios de aceptacion completos.
 
 ---
