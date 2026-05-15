@@ -59,6 +59,8 @@ mindmap
       Testing
       Despliegue
       Defensa Academica
+    Presentacion
+      Alcance MVP
     Procesos
       Compra Online Retiro
       Compra Online Envio
@@ -107,6 +109,7 @@ mindmap
 | [[07 - Referencias/Despliegue\|Despliegue]] | [[07 - Referencias/Despliegue]] | Estrategia de despliegue |
 | [[07 - Referencias/Defensa Academica\|Defensa Academica]] | [[07 - Referencias/Defensa Academica]] | Argumento de defensa |
 | [[08 - Procesos/_Index\|Procesos Criticos]] | [[08 - Procesos/_Index]] | Diagramas de secuencia detallados |
+| [[09 - Presentacion/Alcance MVP\|Alcance MVP]] | [[09 - Presentacion/Alcance MVP]] | Lo que entra y lo que no en el MVP, para la entrevista con el tutor |
 
 ---
 
